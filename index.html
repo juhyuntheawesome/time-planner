@@ -442,12 +442,10 @@ async function addCat() {
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
-    categories.push(data.cat);
     document.getElementById('new-cat-emoji').value = '';
     document.getElementById('new-cat-name').value = '';
     selectedColorIndex = 4;
-    refreshCatSelect();
-    renderCatList();
+    await loadCats();
     renderGrid();
   } catch(e) { alert('추가 실패: ' + e.message); }
 }
@@ -698,6 +696,7 @@ async function saveToNotion() {
     ...data.plan.map(b=>({...b, type:'plan'})),
     ...data.actual.map(b=>({...b, type:'actual'}))
   ];
+  if (!blocks.length) { setStatus(''); return; }
   setStatus('저장 중...', 'syncing');
   try {
     const res = await fetch('/api/save', {
