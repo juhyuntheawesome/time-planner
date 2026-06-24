@@ -9,6 +9,8 @@ export default async function handler(req, res) {
 
   const NOTION_TOKEN = process.env.NOTION_TOKEN;
   const DB_ID = process.env.NOTION_DB_ID;
+  const DAILY_LOG_DB_ID = process.env.DAILY_LOG_DB_ID;
+
   const headers = {
     'Authorization': `Bearer ${NOTION_TOKEN}`,
     'Notion-Version': '2022-06-28',
@@ -21,6 +23,7 @@ export default async function handler(req, res) {
   };
 
   try {
+    // 1. 기존 블록 삭제
     const existing = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
       method: 'POST', headers,
       body: JSON.stringify({ filter: { property: '날짜', date: { equals: date } } })
@@ -33,7 +36,8 @@ export default async function handler(req, res) {
       })
     ));
 
-    await Promise.all(blocks.map(b =>
+    // 2. 새 블록 저장
+    const newPages = await Promise.all(blocks.map(b =>
       fetch('https://api.notion.com/v1/pages', {
         method: 'POST', headers,
         body: JSON.stringify({
@@ -49,8 +53,48 @@ export default async function handler(req, res) {
             ...(b.memo ? { '메모': { rich_text: [{ text: { content: b.memo } }] } } : {})
           }
         })
-      })
+      }).then(r => r.json())
     ));
+
+    // 3. Daily Log 연결
+    if (DAILY_LOG_DB_ID) {
+      // 해당 날짜 Daily Log 페이지 찾기
+      const logRes = await fetch(`https://api.notion.com/v1/databases/${DAILY_LOG_DB_ID}/query`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          filter: { property: '날짜 (Date)', date: { equals: date } }
+        })
+      });
+      const logData = await logRes.json();
+      const newPageIds = newPages.map(p => ({ id: p.id }));
+
+      if (logData.results.length > 0) {
+        // 기존 Daily Log 페이지에 연결
+        const logPageId = logData.results[0].id;
+        await fetch(`https://api.notion.com/v1/pages/${logPageId}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({
+            properties: {
+              '시간 계획': { relation: newPageIds }
+            }
+          })
+        });
+      } else {
+        // Daily Log 페이지가 없으면 새로 생성
+        await fetch('https://api.notion.com/v1/pages', {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            parent: { database_id: DAILY_LOG_DB_ID },
+            properties: {
+              '한줄요약': { title: [{ text: { content: date } }] },
+              'date:날짜 (Date):start': date,
+              'date:날짜 (Date):is_datetime': 0,
+              '시간 계획': { relation: newPageIds }
+            }
+          })
+        });
+      }
+    }
 
     res.status(200).json({ saved: blocks.length });
   } catch(e) {
