@@ -24,8 +24,6 @@ export default async function handler(req, res) {
     pink:    { bg: '#fce7f3', text: '#831843' },
     red:     { bg: '#fef2f2', text: '#991b1b' },
   };
-  const COLOR_NAMES = ['gray','brown','orange','yellow','green','blue','purple','pink','red'];
-
   // GET: 카테고리 목록 불러오기
   if (req.method === 'GET') {
     try {
