@@ -254,6 +254,7 @@ document.getElementById('f-end').value = '10:00';
 
 const dateInput = document.getElementById('date-input');
 dateInput.value = new Date().toISOString().slice(0,10);
+dateInput.addEventListener('change', () => loadFromNotion());
 
 // ── init ──
 function init() {
