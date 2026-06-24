@@ -11,7 +11,6 @@ export default async function handler(req, res) {
     'Notion-Version': '2022-06-28',
     'Content-Type': 'application/json',
   };
-
   const NOTION_COLOR_MAP = {
     default: { bg: '#f3f4f6', text: '#374151' },
     gray:    { bg: '#f3f4f6', text: '#374151' },
@@ -24,7 +23,8 @@ export default async function handler(req, res) {
     pink:    { bg: '#fce7f3', text: '#831843' },
     red:     { bg: '#fef2f2', text: '#991b1b' },
   };
-  // GET: 카테고리 목록 불러오기
+
+  // GET: 카테고리 목록
   if (req.method === 'GET') {
     try {
       const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, { headers });
@@ -47,50 +47,30 @@ export default async function handler(req, res) {
 
   // POST: 카테고리 추가
   if (req.method === 'POST') {
-    const { name, emoji, colorIndex } = req.body;
+    const { name, emoji, notionColor } = req.body;
     if (!name) return res.status(400).json({ error: '이름이 없어요' });
-    const notionColor = COLOR_NAMES[colorIndex % COLOR_NAMES.length] || 'gray';
+    const color = notionColor || 'gray';
     const notionName = `${emoji || '⭐'} ${name}`;
     try {
-      // 기존 옵션 조회
       const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, { headers });
       const data = await r.json();
       const existing = data.properties?.['카테고리']?.select?.options || [];
       if (existing.find(o => o.name === notionName)) {
         return res.status(400).json({ error: '이미 있는 카테고리예요' });
       }
-      // 새 옵션 추가
-      const newOptions = [...existing.map(o => ({ name: o.name, color: o.color })), { name: notionName, color: notionColor }];
+      const newOptions = [...existing.map(o => ({ name: o.name, color: o.color })), { name: notionName, color }];
       await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, {
         method: 'PATCH', headers,
         body: JSON.stringify({ properties: { '카테고리': { select: { options: newOptions } } } })
       });
-      const color = NOTION_COLOR_MAP[notionColor] || NOTION_COLOR_MAP.default;
-      res.status(200).json({ cat: { name, emoji, bg: color.bg, text: color.text, notionColor, notionName } });
+      const colorObj = NOTION_COLOR_MAP[color] || NOTION_COLOR_MAP.default;
+      res.status(200).json({ cat: { name, emoji, bg: colorObj.bg, text: colorObj.text, notionColor: color, notionName } });
     } catch(e) {
       res.status(500).json({ error: e.message });
     }
     return;
   }
 
-  // DELETE: 카테고리 삭제
-  if (req.method === 'DELETE') {
-    const { notionName } = req.body;
-    try {
-      const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, { headers });
-      const data = await r.json();
-      const existing = data.properties?.['카테고리']?.select?.options || [];
-      const newOptions = existing.filter(o => o.name !== notionName).map(o => ({ name: o.name, color: o.color }));
-      await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, {
-        method: 'PATCH', headers,
-        body: JSON.stringify({ properties: { '카테고리': { select: { options: newOptions } } } })
-      });
-      res.status(200).json({ ok: true });
-    } catch(e) {
-      res.status(500).json({ error: e.message });
-    }
-    return;
-  }
-
-  res.status(405).json({ error: 'Method not allowed' });
+  // DELETE: 플래너에서만 숨김 (노션엔 영향 없음)
+  res.status(200).json({ ok: true });
 }
