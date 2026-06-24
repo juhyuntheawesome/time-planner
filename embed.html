@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하루 플래너</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f0efe9;
+    --text: #1a1a1a; --text2: #555; --text3: #999;
+    --border: rgba(0,0,0,0.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #333;
+      --text: #f0f0f0; --text2: #aaa; --text3: #666;
+      --border: rgba(255,255,255,0.1);
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid var(--border); }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .date-label { font-size: 14px; font-weight: 600; }
+  .date-nav { display: flex; gap: 4px; }
+  .nav-btn { border: 0.5px solid var(--border); border-radius: 6px; padding: 3px 8px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 13px; }
+  .nav-btn:hover { background: var(--bg2); }
+  .sync-status { font-size: 11px; color: var(--text3); }
+  .sync-status.syncing { color: #2563eb; }
+  .sync-status.ok { color: #16a34a; }
+  .sync-status.err { color: #dc2626; }
+
+  .tabs { display: flex; border-bottom: 0.5px solid var(--border); }
+  .tab { flex: 1; padding: 7px; font-size: 12px; text-align: center; cursor: pointer; color: var(--text2); border: none; background: none; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+
+  .main { display: grid; grid-template-columns: 1fr 1fr; }
+  .panel { border-right: 0.5px solid var(--border); }
+  .panel:last-child { border-right: none; }
+  .panel-header { padding: 7px 12px; font-size: 12px; font-weight: 500; border-bottom: 0.5px solid var(--border); background: var(--bg2); display: flex; justify-content: space-between; align-items: center; }
+  .add-btn { font-size: 11px; border: 0.5px solid var(--border); border-radius: 5px; padding: 2px 8px; cursor: pointer; background: var(--bg); color: var(--text2); }
+
+  .timeline-wrap { position: relative; padding-left: 34px; background: var(--bg); }
+  .hour-line { position: absolute; left: 34px; right: 0; height: 0.5px; background: var(--border); }
+  .hour-label { position: absolute; left: 0; width: 30px; font-size: 9px; color: var(--text3); text-align: right; transform: translateY(-50%); padding-right: 4px; }
+  .block { position: absolute; left: 3px; right: 3px; border-radius: 4px; padding: 2px 6px; cursor: pointer; overflow: hidden; border: none; text-align: left; }
+  .block:hover { opacity: 0.82; }
+  .block-title { font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block-time { font-size: 9px; opacity: 0.7; }
+  .empty-hint { text-align: center; padding: 2rem 0.5rem; font-size: 12px; color: var(--text3); }
+
+  .compare-wrap { overflow-y: auto; }
+  .compare-header { display: grid; grid-template-columns: 50px 1fr 1fr; font-size: 11px; font-weight: 500; color: var(--text2); border-bottom: 0.5px solid var(--border); background: var(--bg2); }
+  .compare-header > div { padding: 6px 8px; border-right: 0.5px solid var(--border); }
+  .compare-header > div:last-child { border-right: none; }
+  .compare-row { display: grid; grid-template-columns: 50px 1fr 1fr; border-bottom: 0.5px solid var(--border); }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-time { padding: 6px 6px; font-size: 10px; color: var(--text3); border-right: 0.5px solid var(--border); display: flex; align-items: center; }
+  .compare-cell { padding: 6px 8px; border-right: 0.5px solid var(--border); }
+  .compare-cell:last-child { border-right: none; }
+  .cell-title { font-size: 11px; }
+  .cell-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .row-match { background: #f0fdf4; }
+  .row-diff { background: #fefce8; }
+  @media (prefers-color-scheme: dark) {
+    .row-match { background: #14532d22; }
+    .row-diff { background: #71260822; }
+  }
+
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; z-index: 100; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg); border-radius: 10px; border: 0.5px solid var(--border); padding: 1rem; width: 290px; max-width: 92vw; }
+  .modal h3 { font-size: 13px; font-weight: 600; margin-bottom: 0.9rem; }
+  .frow { margin-bottom: 10px; }
+  .frow label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 3px; }
+  .frow input, .frow select, .frow textarea { width: 100%; padding: 5px 8px; font-size: 12px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 6px; background: var(--bg2); color: var(--text); }
+  .frow textarea { height: 48px; resize: none; }
+  .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .modal-actions { display: flex; gap: 6px; margin-top: 0.9rem; justify-content: flex-end; }
+  .btn-cancel { font-size: 12px; border: 0.5px solid var(--border); border-radius: 6px; padding: 5px 11px; cursor: pointer; background: transparent; color: var(--text2); }
+  .btn-save { font-size: 12px; border: 0.5px solid var(--border); border-radius: 6px; padding: 5px 11px; cursor: pointer; background: var(--bg2); color: var(--text); font-weight: 500; }
+  .btn-del { font-size: 12px; border: 0.5px solid #e24b4a; border-radius: 6px; padding: 5px 11px; cursor: pointer; background: transparent; color: #dc2626; margin-right: auto; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="date-nav">
+      <button class="nav-btn" onclick="changeDate(-1)">‹</button>
+      <button class="nav-btn" onclick="changeDate(1)">›</button>
+    </div>
+    <span class="date-label" id="date-label"></span>
+  </div>
+  <span class="sync-status" id="sync-status"></span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="setTab('timeline')">타임라인</button>
+  <button class="tab" onclick="setTab('compare')">비교</button>
+</div>
+
+<div id="timeline-view" class="main">
+  <div class="panel">
+    <div class="panel-header"><span>📋 계획</span><button class="add-btn" onclick="openModal('plan')">+</button></div>
+    <div id="plan-timeline"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header"><span>✅ 실제</span><button class="add-btn" onclick="openModal('actual')">+</button></div>
+    <div id="actual-timeline"></div>
+  </div>
+</div>
+
+<div id="compare-view" style="display:none">
+  <div class="compare-header"><div>시간</div><div>📋 계획</div><div>✅ 실제</div></div>
+  <div id="compare-rows"></div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-title">블록 추가</h3>
+    <div class="frow"><label>제목</label><input type="text" id="f-title" placeholder="예: 공부, 점심, 운동"></div>
+    <div class="frow"><label>시간</label><div class="time-row"><select id="f-start"></select><select id="f-end"></select></div></div>
+    <div class="frow"><label>카테고리</label>
+      <select id="f-cat">
+        <option value="집중업무">🎯 집중업무</option>
+        <option value="학습">📚 학습</option>
+        <option value="식사">🍽️ 식사</option>
+        <option value="운동">🏃 운동</option>
+        <option value="휴식">💤 휴식</option>
+        <option value="루틴">🚿 루틴</option>
+        <option value="이동">🚗 이동</option>
+        <option value="소통">💬 소통</option>
+        <option value="기타">⚡ 기타</option>
+      </select>
+    </div>
+    <div class="frow"><label>메모</label><textarea id="f-memo" placeholder="선택사항"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-del" id="btn-del" style="display:none" onclick="deleteBlock()">삭제</button>
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveBlock()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CAT_COLORS = {
+  '집중업무': { bg: '#dbeafe', text: '#1e3a5f' },
+  '학습':     { bg: '#dcfce7', text: '#14532d' },
+  '식사':     { bg: '#fef9c3', text: '#713f12' },
+  '운동':     { bg: '#ffedd5', text: '#7c2d12' },
+  '휴식':     { bg: '#f3f4f6', text: '#374151' },
+  '루틴':     { bg: '#ede9fe', text: '#3b0764' },
+  '이동':     { bg: '#f5f5f4', text: '#44403c' },
+  '소통':     { bg: '#fce7f3', text: '#831843' },
+  '기타':     { bg: '#d1fae5', text: '#064e3b' },
+};
+const CAT_MAP = {
+  '집중업무':'🎯 집중업무','학습':'📚 학습','식사':'🍽️ 식사',
+  '운동':'🏃 운동','휴식':'💤 휴식','루틴':'🚿 루틴',
+  '이동':'🚗 이동','소통':'💬 소통','기타':'⚡ 기타'
+};
+
+const START_H = 6, END_H = 23, PPM = 1.8;
+const TH = (END_H - START_H) * 60 * PPM;
+
+let data = { plan: [], actual: [] };
+let currentType = 'plan', editingId = null, currentTab = 'timeline';
+let currentDate = new Date().toISOString().slice(0, 10);
+let saveTimer = null;
+
+const times = [];
+for (let h = 5; h <= 24; h++) for (let m = 0; m < 60; m += 10) {
+  if (h === 24 && m > 0) break;
+  times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+}
+['f-start','f-end'].forEach(id => {
+  const sel = document.getElementById(id);
+  times.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+});
+document.getElementById('f-start').value = '09:00';
+document.getElementById('f-end').value = '10:00';
+
+function uid() { return Math.random().toString(36).slice(2); }
+function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = ['일','월','화','수','목','금','토'];
+  return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
+function changeDate(delta) {
+  const d = new Date(currentDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  currentDate = d.toISOString().slice(0, 10);
+  document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+  data = { plan: [], actual: [] };
+  renderTimeline('plan'); renderTimeline('actual');
+  loadFromNotion();
+}
+
+function setStatus(msg, type='') {
+  const el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.className = 'sync-status' + (type ? ' ' + type : '');
+  if (type === 'ok') setTimeout(() => { el.textContent = ''; el.className = 'sync-status'; }, 2000);
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['timeline','compare'][i]===tab));
+  document.getElementById('timeline-view').style.display = tab==='timeline' ? 'grid' : 'none';
+  document.getElementById('compare-view').style.display  = tab==='compare'  ? 'block' : 'none';
+  if (tab==='compare') renderCompare();
+}
+
+function renderTimeline(type) {
+  const container = document.getElementById(`${type}-timeline`);
+  const blocks = data[type];
+  if (!blocks.length) {
+    container.innerHTML = `<div class="empty-hint">+ 눌러서 추가</div>`;
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'timeline-wrap';
+  wrap.style.height = (TH + 12) + 'px';
+  for (let h = START_H; h <= END_H; h++) {
+    const y = (h - START_H) * 60 * PPM;
+    const line = document.createElement('div'); line.className = 'hour-line'; line.style.top = y+'px'; wrap.appendChild(line);
+    const lbl  = document.createElement('div'); lbl.className  = 'hour-label'; lbl.style.top  = y+'px'; lbl.textContent = String(h).padStart(2,'0'); wrap.appendChild(lbl);
+  }
+  const area = document.createElement('div'); area.style.cssText = `position:relative;height:${TH}px`;
+  blocks.forEach(b => {
+    const top = Math.max(0,(toMin(b.start)-START_H*60)*PPM);
+    const ht  = Math.max(16,(toMin(b.end)-toMin(b.start))*PPM-2);
+    const col = CAT_COLORS[b.cat]||CAT_COLORS['기타'];
+    const el = document.createElement('button'); el.className = 'block';
+    el.style.cssText = `top:${top}px;height:${ht}px;background:${col.bg};color:${col.text}`;
+    el.innerHTML = `<div class="block-title">${b.title}</div>${ht>22?`<div class="block-time">${b.start}–${b.end}</div>`:''}`;
+    el.onclick = () => openModal(type, b.id);
+    area.appendChild(el);
+  });
+  wrap.appendChild(area);
+  container.innerHTML = ''; container.appendChild(wrap);
+}
+
+function renderCompare() {
+  const allTimes = [...new Set([...data.plan,...data.actual].map(b=>b.start))].sort();
+  const el = document.getElementById('compare-rows');
+  if (!allTimes.length) { el.innerHTML='<div style="padding:1.5rem;text-align:center;font-size:12px;color:var(--text3)">블록을 추가하면 여기서 비교돼요</div>'; return; }
+  el.innerHTML = allTimes.map(t => {
+    const p = data.plan.find(b=>b.start===t), a = data.actual.find(b=>b.start===t);
+    const cls = (p&&a)?(p.cat===a.cat?'row-match':'row-diff'):'';
+    const pC = p?CAT_COLORS[p.cat]:null, aC = a?CAT_COLORS[a.cat]:null;
+    return `<div class="compare-row ${cls}">
+      <div class="compare-time">${t}</div>
+      <div class="compare-cell">${p?`<div class="cell-title" style="color:${pC.text}">${p.title}</div><div class="cell-sub">${p.start}–${p.end}</div>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>
+      <div class="compare-cell">${a?`<div class="cell-title" style="color:${aC.text}">${a.title}</div><div class="cell-sub">${a.start}–${a.end}</div>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(type, id=null) {
+  currentType=type; editingId=id;
+  const del = document.getElementById('btn-del');
+  if (id) {
+    const b = data[type].find(x=>x.id===id);
+    document.getElementById('modal-title').textContent = '블록 수정';
+    document.getElementById('f-title').value = b.title;
+    document.getElementById('f-start').value = b.start;
+    document.getElementById('f-end').value   = b.end;
+    document.getElementById('f-cat').value   = b.cat;
+    document.getElementById('f-memo').value  = b.memo||'';
+    del.style.display = 'block';
+  } else {
+    document.getElementById('modal-title').textContent = (type==='plan'?'계획':'실제 기록')+' 추가';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-start').value = '09:00';
+    document.getElementById('f-end').value   = '10:00';
+    document.getElementById('f-cat').value   = '학습';
+    document.getElementById('f-memo').value  = '';
+    del.style.display = 'none';
+  }
+  document.getElementById('modal-bg').classList.add('open');
+  setTimeout(() => document.getElementById('f-title').focus(), 50);
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); editingId=null; }
+
+function scheduleAutoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToNotion(), 1500);
+}
+
+function saveBlock() {
+  const title = document.getElementById('f-title').value.trim();
+  const start = document.getElementById('f-start').value;
+  const end   = document.getElementById('f-end').value;
+  const cat   = document.getElementById('f-cat').value;
+  const memo  = document.getElementById('f-memo').value.trim();
+  if (!title) { document.getElementById('f-title').focus(); return; }
+  if (toMin(end)<=toMin(start)) { alert('종료 시간은 시작 시간 이후여야 해요'); return; }
+  if (editingId) {
+    const idx = data[currentType].findIndex(x=>x.id===editingId);
+    data[currentType][idx] = {id:editingId,title,start,end,cat,memo};
+  } else {
+    data[currentType].push({id:uid(),title,start,end,cat,memo});
+  }
+  closeModal();
+  renderTimeline('plan'); renderTimeline('actual');
+  if (currentTab==='compare') renderCompare();
+  scheduleAutoSave();
+}
+
+function deleteBlock() {
+  data[currentType] = data[currentType].filter(x=>x.id!==editingId);
+  closeModal();
+  renderTimeline('plan'); renderTimeline('actual');
+  scheduleAutoSave();
+}
+
+document.getElementById('modal-bg').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+async function saveToNotion() {
+  const blocks = [
+    ...data.plan.map(b=>({...b, type:'plan'})),
+    ...data.actual.map(b=>({...b, type:'actual'}))
+  ];
+  setStatus('저장 중...', 'syncing');
+  try {
+    const res = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: currentDate, blocks })
+    });
+    if (!res.ok) throw new Error('서버 오류');
+    setStatus('저장됨', 'ok');
+  } catch(e) {
+    setStatus('저장 실패', 'err');
+  }
+}
+
+async function loadFromNotion() {
+  setStatus('불러오는 중...', 'syncing');
+  try {
+    const res = await fetch('/api/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: currentDate })
+    });
+    if (!res.ok) throw new Error('서버 오류');
+    const result = await res.json();
+    data.plan   = result.plan.map(b=>({...b, id:uid()}));
+    data.actual = result.actual.map(b=>({...b, id:uid()}));
+    renderTimeline('plan'); renderTimeline('actual');
+    if (currentTab==='compare') renderCompare();
+    setStatus('동기화됨', 'ok');
+  } catch(e) {
+    setStatus('오류', 'err');
+  }
+}
+
+document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+loadFromNotion();
+</script>
+</body>
+</html>
