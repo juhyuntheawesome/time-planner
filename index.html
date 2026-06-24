@@ -301,6 +301,8 @@ function renderWeekGrid() {
   const PPM = 1.2;
   const grid = document.getElementById('week-grid');
   grid.innerHTML = '';
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `44px repeat(7, 1fr)`;
 
   // 헤더 행
   const emptyHeader = document.createElement('div');
