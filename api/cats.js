@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   };
   const NOTION_COLOR_MAP = {
     default: { bg: '#f3f4f6', text: '#374151' },
-    gray:    { bg: '#f3f4f6', text: '#374151' },
+    gray:    { bg: '#e5e7eb', text: '#374151' },
     brown:   { bg: '#fef3c7', text: '#78350f' },
     orange:  { bg: '#ffedd5', text: '#7c2d12' },
     yellow:  { bg: '#fef9c3', text: '#713f12' },
