@@ -461,7 +461,28 @@ async function saveToNotion() {
 }
 
 async function loadFromNotion() {
-  setStatus('불러오기는 현재 지원하지 않아요 (저장만 가능)', 'err');
+  const date = dateInput.value;
+  if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
+  showLoading('노션에서 불러오는 중...');
+  try {
+    const res = await fetch('/api/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date })
+    });
+    if (!res.ok) throw new Error('서버 오류: ' + res.status);
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    data.plan   = result.plan.map(b=>({...b, id:uid()}));
+    data.actual = result.actual.map(b=>({...b, id:uid()}));
+    renderTimeline('plan'); renderTimeline('actual');
+    if (currentTab==='compare') renderCompare();
+    const total = data.plan.length + data.actual.length;
+    setStatus(`${total}개 블록 불러옴`, 'ok');
+  } catch(e) {
+    setStatus('불러오기 실패: ' + e.message, 'err');
+  }
+  hideLoading();
 }
 
 init();
