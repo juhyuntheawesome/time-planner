@@ -5,185 +5,114 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>하루 플래너</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg2: #f7f6f3; --bg3: #efefed;
+  --text: #1a1a1a; --text2: #666; --text3: #aaa;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.15);
+  --radius: 7px;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f0efe9;
-    --text: #1a1a1a; --text2: #555; --text3: #999;
-    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.2);
-    --radius: 8px; --radius-lg: 12px;
-    --green-bg: #eaf3de; --green-text: #27500a;
-    --yellow-bg: #fef9e7; --yellow-text: #7d6608;
-    --red-bg: #fdeaea; --red-text: #7b1c1c;
+    --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #333;
+    --text: #f0f0f0; --text2: #aaa; --text3: #666;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #333;
-      --text: #f0f0f0; --text2: #aaa; --text3: #666;
-      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
-      --green-bg: #173404; --green-text: #c0dd97;
-      --yellow-bg: #412402; --yellow-text: #fac775;
-      --red-bg: #501313; --red-text: #f09595;
-    }
-  }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
 
-  /* ── setup screen ── */
-  #setup-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
-  .setup-card { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 2rem; width: 440px; max-width: 100%; }
-  .setup-card h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
-  .setup-card p { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.6; }
-  .setup-card a { color: #2563eb; }
-  .form-group { margin-bottom: 14px; }
-  .form-group label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
-  .form-group input { width: 100%; padding: 8px 10px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg2); color: var(--text); }
-  .form-group input:focus { outline: none; border-color: #2563eb; }
-  .form-group .hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
-  .btn-primary { width: 100%; padding: 10px; font-size: 14px; font-weight: 500; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); cursor: pointer; margin-top: 8px; }
-  .btn-primary:hover { opacity: 0.88; }
-  .error-msg { font-size: 12px; color: var(--red-text); background: var(--red-bg); border-radius: var(--radius); padding: 8px 10px; margin-top: 10px; display: none; }
+/* header */
+.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 0.5px solid var(--border2); position: sticky; top: 0; background: var(--bg); z-index: 10; }
+.date-nav { display: flex; align-items: center; gap: 8px; }
+.nav-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 16px; line-height: 1; }
+.nav-btn:hover { background: var(--bg2); }
+.date-label { font-size: 15px; font-weight: 600; min-width: 140px; text-align: center; }
+.sync-badge { font-size: 11px; color: var(--text3); padding: 3px 8px; border-radius: 20px; background: var(--bg2); }
+.sync-badge.syncing { color: #2563eb; background: #eff6ff; }
+.sync-badge.ok { color: #16a34a; background: #f0fdf4; }
+.sync-badge.err { color: #dc2626; background: #fef2f2; }
+@media (prefers-color-scheme: dark) {
+  .sync-badge.syncing { background: #1e3a5f; }
+  .sync-badge.ok { background: #14532d22; }
+  .sync-badge.err { background: #7f1d1d22; }
+}
 
-  /* ── app ── */
-  #app { display: none; max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
-  .top-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
-  .app-title { font-size: 16px; font-weight: 600; }
-  .date-input { font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 9px; background: var(--bg); color: var(--text); }
-  .tabs { display: flex; gap: 4px; }
-  .tab { padding: 5px 13px; font-size: 13px; border: 0.5px solid var(--border); border-radius: var(--radius); cursor: pointer; background: var(--bg); color: var(--text2); }
-  .tab.active { background: var(--bg3); color: var(--text); font-weight: 500; }
-  .notion-bar { display: flex; gap: 8px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
-  .notion-btn { display: flex; align-items: center; gap: 6px; padding: 6px 13px; font-size: 12px; border-radius: var(--radius); cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text2); }
-  .notion-btn:hover { background: var(--bg2); }
-  .notion-btn.primary { background: var(--bg2); color: var(--text); font-weight: 500; }
-  .settings-btn { margin-left: auto; font-size: 12px; color: var(--text3); cursor: pointer; border: none; background: none; padding: 4px 8px; }
-  .settings-btn:hover { color: var(--text2); }
-  .status-msg { font-size: 12px; color: var(--text3); }
-  .status-msg.ok { color: #1a7340; }
-  .status-msg.err { color: #a32d2d; }
+/* column headers */
+.col-headers { display: grid; grid-template-columns: 44px 1fr 1fr; border-bottom: 0.5px solid var(--border2); background: var(--bg2); }
+.col-header { padding: 7px 0; font-size: 12px; font-weight: 500; color: var(--text2); text-align: center; border-right: 0.5px solid var(--border2); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.col-header:last-child { border-right: none; }
+.add-btn { font-size: 11px; border: 0.5px solid var(--border2); border-radius: 4px; padding: 1px 7px; cursor: pointer; background: var(--bg); color: var(--text2); line-height: 1.6; }
+.add-btn:hover { background: var(--bg3); }
 
-  /* ── timeline layout ── */
-  .main { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .panel-header { padding: 9px 13px; font-size: 13px; font-weight: 500; border-bottom: 0.5px solid var(--border); background: var(--bg2); display: flex; align-items: center; justify-content: space-between; }
-  .add-btn { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 3px 10px; cursor: pointer; background: var(--bg); color: var(--text2); }
-  .add-btn:hover { background: var(--bg2); }
-  .timeline-wrap { position: relative; padding-left: 38px; background: var(--bg); }
-  .hour-line { position: absolute; left: 38px; right: 0; height: 0.5px; background: var(--border); }
-  .hour-label { position: absolute; left: 0; width: 34px; font-size: 10px; color: var(--text3); text-align: right; transform: translateY(-50%); padding-right: 5px; }
-  .block { position: absolute; left: 4px; right: 4px; border-radius: 5px; padding: 3px 7px; cursor: pointer; overflow: hidden; border: none; text-align: left; transition: opacity 0.1s; }
-  .block:hover { opacity: 0.82; }
-  .block-title { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .block-time { font-size: 10px; opacity: 0.72; }
-  .empty-hint { text-align: center; padding: 2.5rem 1rem; font-size: 13px; color: var(--text3); }
+/* grid */
+.planner-grid { display: grid; grid-template-columns: 44px 1fr 1fr; }
+.time-col { border-right: 0.5px solid var(--border2); }
+.plan-col { border-right: 0.5px solid var(--border2); }
+.actual-col { }
 
-  /* ── compare ── */
-  .compare-panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .compare-header { display: grid; grid-template-columns: 58px 1fr 1fr; font-size: 12px; font-weight: 500; color: var(--text2); border-bottom: 0.5px solid var(--border); background: var(--bg2); }
-  .compare-header > div { padding: 8px 10px; border-right: 0.5px solid var(--border); }
-  .compare-header > div:last-child { border-right: none; }
-  .compare-row { display: grid; grid-template-columns: 58px 1fr 1fr; border-bottom: 0.5px solid var(--border); }
-  .compare-row:last-child { border-bottom: none; }
-  .compare-time { padding: 7px 8px; font-size: 11px; color: var(--text3); border-right: 0.5px solid var(--border); display: flex; align-items: center; }
-  .compare-cell { padding: 7px 10px; border-right: 0.5px solid var(--border); }
-  .compare-cell:last-child { border-right: none; }
-  .cell-title { font-size: 12px; }
-  .cell-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .row-match { background: var(--green-bg); }
-  .row-diff { background: var(--yellow-bg); }
+/* hour row */
+.hour-group { display: contents; }
+.hour-label-cell { grid-column: 1; display: flex; align-items: flex-start; justify-content: flex-end; padding: 4px 6px 0 0; border-bottom: 0.5px solid var(--border2); }
+.hour-label-cell span { font-size: 10px; color: var(--text3); line-height: 1; margin-top: -1px; }
+.cells-col { border-bottom: 0.5px solid var(--border2); position: relative; }
 
-  /* ── modal ── */
-  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); align-items: center; justify-content: center; z-index: 100; }
-  .modal-bg.open { display: flex; }
-  .modal { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border2); padding: 1.25rem; width: 310px; max-width: 92vw; }
-  .modal h3 { font-size: 14px; font-weight: 600; margin-bottom: 1rem; }
-  .frow { margin-bottom: 11px; }
-  .frow label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 3px; }
-  .frow input, .frow select, .frow textarea { width: 100%; padding: 6px 9px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg2); color: var(--text); }
-  .frow textarea { height: 54px; resize: none; }
-  .frow input:focus, .frow select:focus, .frow textarea:focus { outline: none; border-color: #2563eb; }
-  .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-  .modal-actions { display: flex; gap: 7px; margin-top: 1rem; justify-content: flex-end; }
-  .btn-cancel { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: transparent; color: var(--text2); }
-  .btn-save { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: var(--bg2); color: var(--text); font-weight: 500; }
-  .btn-del { font-size: 12px; border: 0.5px solid #e24b4a; border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: transparent; color: #a32d2d; margin-right: auto; }
+/* 10min cells */
+.ten-min-grid { display: grid; grid-template-columns: repeat(6, 1fr); height: 48px; }
+.cell { border-right: 0.5px solid var(--border); cursor: pointer; position: relative; transition: background 0.1s; }
+.cell:last-child { border-right: none; }
+.cell:hover { background: var(--bg2); }
+.cell.has-block { cursor: default; }
+.cell.has-block:hover { background: transparent; }
 
-  /* ── loading ── */
-  .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.2); align-items: center; justify-content: center; z-index: 200; }
-  .loading-overlay.show { display: flex; }
-  .loading-box { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border2); padding: 1.25rem 1.75rem; font-size: 14px; color: var(--text2); }
+/* block overlay */
+.block-overlay { position: absolute; top: 1px; bottom: 1px; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 2px 5px; cursor: pointer; z-index: 2; border: none; text-align: left; }
+.block-overlay:hover { opacity: 0.85; }
+.block-title { font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.block-time-label { font-size: 9px; opacity: 0.7; line-height: 1.3; }
 
-  .nav-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 15px; }
-  .nav-btn:hover { background: var(--bg2); }
-  .date-label { font-size: 14px; font-weight: 500; min-width: 130px; text-align: center; }
-  @media (max-width: 600px) {
-    .main { grid-template-columns: 1fr; }
-  }
+/* modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.28); align-items: center; justify-content: center; z-index: 100; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--bg); border-radius: 12px; border: 0.5px solid var(--border2); padding: 1.1rem; width: 295px; max-width: 93vw; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+.modal h3 { font-size: 13px; font-weight: 600; margin-bottom: 0.9rem; }
+.frow { margin-bottom: 10px; }
+.frow label { font-size: 11px; color: var(--text2); display: block; margin-bottom: 3px; }
+.frow input, .frow select, .frow textarea { width: 100%; padding: 6px 8px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg2); color: var(--text); }
+.frow input:focus, .frow select:focus, .frow textarea:focus { outline: none; border-color: #2563eb; }
+.frow textarea { height: 52px; resize: none; }
+.time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.modal-actions { display: flex; gap: 7px; margin-top: 0.9rem; justify-content: flex-end; }
+.btn-cancel { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: transparent; color: var(--text2); }
+.btn-save { font-size: 12px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: var(--bg2); color: var(--text); font-weight: 500; }
+.btn-del { font-size: 12px; border: 0.5px solid #e24b4a; border-radius: var(--radius); padding: 5px 12px; cursor: pointer; background: transparent; color: #dc2626; margin-right: auto; }
 </style>
 </head>
 <body>
 
-<!-- ── SETUP SCREEN ── -->
-<div id="setup-screen">
-  <div class="setup-card">
-    <h1>⏱️ 하루 플래너 설정</h1>
-    <p>노션과 연동하려면 Integration Token과 DB ID가 필요해요.<br>
-    <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a>에서 토큰을 만들고, Time Planner DB에 Integration을 연결해주세요.</p>
-
-    <div class="form-group">
-      <label>Notion Integration Token</label>
-      <input type="password" id="inp-token" placeholder="secret_xxxxxxxxxxxxxxxxxxxx">
-      <div class="hint">입력값은 이 브라우저 탭 안에서만 저장돼요 (localStorage)</div>
-    </div>
-    <div class="form-group">
-      <label>Time Planner DB ID</label>
-      <input type="text" id="inp-dbid" placeholder="095435769e92477e979f0c7311f8ef56">
-      <div class="hint">노션 DB URL에서 ?v= 앞의 32자리 ID예요</div>
-    </div>
-    <button class="btn-primary" onclick="setupStart()">연결하고 시작하기</button>
-    <div class="error-msg" id="setup-error"></div>
-    <p style="font-size:12px; color: var(--text3); margin-top: 14px; text-align:center">
-      또는 <a href="#" onclick="skipSetup()" style="color:#2563eb">노션 연동 없이 사용하기</a>
-    </p>
+<div class="header">
+  <div class="date-nav">
+    <button class="nav-btn" onclick="changeDate(-1)">‹</button>
+    <span class="date-label" id="date-label"></span>
+    <button class="nav-btn" onclick="changeDate(1)">›</button>
   </div>
+  <span class="sync-badge" id="sync-badge"></span>
 </div>
 
-<!-- ── MAIN APP ── -->
-<div id="app">
-  <div class="top-bar">
-    <span class="app-title">⏱️ 하루 플래너</span>
-    <div style="display:flex;align-items:center;gap:6px">
-      <button class="nav-btn" onclick="changeDate(-1)">‹</button>
-      <span class="date-label" id="date-label"></span>
-      <button class="nav-btn" onclick="changeDate(1)">›</button>
-    </div>
-
-    <span class="status-msg" id="status-msg"></span>
-  </div>
-
-  <div id="timeline-view" class="main">
-    <div class="panel">
-      <div class="panel-header"><span>📋 계획</span><button class="add-btn" onclick="openModal('plan')">+ 추가</button></div>
-      <div id="plan-timeline"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-header"><span>✅ 실제</span><button class="add-btn" onclick="openModal('actual')">+ 추가</button></div>
-      <div id="actual-timeline"></div>
-    </div>
-  </div>
-
-  <div id="compare-view" style="margin-top:14px;">
-    <div class="compare-panel">
-      <div class="compare-header"><div>시간</div><div>📋 계획</div><div>✅ 실제</div></div>
-      <div id="compare-rows"></div>
-    </div>
-  </div>
+<div class="col-headers">
+  <div class="col-header" style="border-right:0.5px solid var(--border2)"></div>
+  <div class="col-header">📋 계획 <button class="add-btn" onclick="openModal('plan')">+</button></div>
+  <div class="col-header">✅ 실제 <button class="add-btn" onclick="openModal('actual')">+</button></div>
 </div>
 
-<!-- MODAL -->
+<div class="planner-grid" id="planner-grid"></div>
+
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <h3 id="modal-title">블록 추가</h3>
     <div class="frow"><label>제목</label><input type="text" id="f-title" placeholder="예: 공부, 점심, 운동"></div>
-    <div class="frow"><label>시간</label><div class="time-row"><select id="f-start"></select><select id="f-end"></select></div></div>
+    <div class="frow"><label>시간</label>
+      <div class="time-row"><select id="f-start"></select><select id="f-end"></select></div>
+    </div>
     <div class="frow"><label>카테고리</label>
       <select id="f-cat">
         <option value="집중업무">🎯 집중업무</option>
@@ -206,10 +135,6 @@
   </div>
 </div>
 
-<div class="loading-overlay" id="loading-overlay">
-  <div class="loading-box" id="loading-msg">처리 중...</div>
-</div>
-
 <script>
 const CAT_COLORS = {
   '집중업무': { bg: '#dbeafe', text: '#1e3a5f' },
@@ -222,21 +147,22 @@ const CAT_COLORS = {
   '소통':     { bg: '#fce7f3', text: '#831843' },
   '기타':     { bg: '#d1fae5', text: '#064e3b' },
 };
-const CAT_TO_NOTION = {
+const CAT_MAP = {
   '집중업무':'🎯 집중업무','학습':'📚 학습','식사':'🍽️ 식사',
   '운동':'🏃 운동','휴식':'💤 휴식','루틴':'🚿 루틴',
-  '이동':'🚗 이동','소통':'💬 소통','기타':'⚡ 기타',
+  '이동':'🚗 이동','소통':'💬 소통','기타':'⚡ 기타'
 };
-const CAT_FROM_NOTION = Object.fromEntries(Object.entries(CAT_TO_NOTION).map(([k,v])=>[v,k]));
+const CAT_FROM = Object.fromEntries(Object.entries(CAT_MAP).map(([k,v])=>[v,k]));
 
-const START_H = 6, END_H = 23, PPM = 2;
-const TH = (END_H - START_H) * 60 * PPM;
+const START_H = 6, END_H = 23;
+const HOURS = Array.from({length: END_H - START_H}, (_, i) => START_H + i);
 
 let data = { plan: [], actual: [] };
-let currentType = 'plan', editingId = null, currentTab = 'plan';
-let notionToken = '', notionDbId = '';
+let currentType = 'plan', editingId = null;
+let currentDate = new Date().toISOString().slice(0, 10);
+let saveTimer = null;
 
-// ── time options ──
+// time selects
 const times = [];
 for (let h = 5; h <= 24; h++) for (let m = 0; m < 60; m += 10) {
   if (h === 24 && m > 0) break;
@@ -249,13 +175,14 @@ for (let h = 5; h <= 24; h++) for (let m = 0; m < 60; m += 10) {
 document.getElementById('f-start').value = '09:00';
 document.getElementById('f-end').value = '10:00';
 
-const dateInput = document.getElementById('date-input');
-let currentDate = new Date().toISOString().slice(0, 10);
+function uid() { return Math.random().toString(36).slice(2); }
+function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+function minToStr(min) { return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`; }
 
-function formatDateLabel(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
+function formatDateLabel(d) {
+  const dt = new Date(d + 'T00:00:00');
   const days = ['일','월','화','수','목','금','토'];
-  return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  return `${dt.getMonth()+1}월 ${dt.getDate()}일 (${days[dt.getDay()]})`;
 }
 
 function changeDate(delta) {
@@ -264,116 +191,88 @@ function changeDate(delta) {
   currentDate = d.toISOString().slice(0, 10);
   document.getElementById('date-label').textContent = formatDateLabel(currentDate);
   data = { plan: [], actual: [] };
-  renderTimeline('plan'); renderTimeline('actual');
+  renderGrid();
   loadFromNotion();
 }
 
-document.getElementById('date-label').textContent = formatDateLabel(currentDate);
-
-// ── init ──
-function init() {
-  notionToken = localStorage.getItem('planner_token') || '';
-  notionDbId  = localStorage.getItem('planner_dbid')  || '';
-  if (true) {
-    document.getElementById('inp-token').value = notionToken;
-    document.getElementById('inp-dbid').value  = notionDbId;
-    launchApp();
-  }
-}
-
-function setupStart() {
-  const token = document.getElementById('inp-token').value.trim();
-  const dbid  = document.getElementById('inp-dbid').value.trim().replace(/-/g,'');
-  if (!token || !dbid) { showSetupError('토큰과 DB ID를 모두 입력해주세요'); return; }
-  localStorage.setItem('planner_token', token);
-  localStorage.setItem('planner_dbid',  dbid);
-  notionToken = token; notionDbId = dbid;
-  launchApp();
-}
-function skipSetup() {
-  notionToken = ''; notionDbId = '';
-  launchApp();
-}
-function showSetup() {
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'flex';
-}
-function launchApp() {
-  document.getElementById('setup-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('notion-bar').style.display = 'flex';
-  renderTimeline('plan'); renderTimeline('actual');
-}
-function showSetupError(msg) {
-  const el = document.getElementById('setup-error');
-  el.textContent = msg; el.style.display = 'block';
-}
-
-// ── helpers ──
-function uid() { return Math.random().toString(36).slice(2); }
-function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
 function setStatus(msg, type='') {
-  const el = document.getElementById('status-msg');
-  el.textContent = msg; el.className = 'status-msg' + (type?' '+type:'');
-  if (type==='ok') setTimeout(()=>{ el.textContent=''; el.className='status-msg'; }, 3000);
+  const el = document.getElementById('sync-badge');
+  el.textContent = msg;
+  el.className = 'sync-badge' + (type ? ' ' + type : '');
+  if (type === 'ok') setTimeout(() => { el.textContent = ''; el.className = 'sync-badge'; }, 2000);
 }
-function showLoading(msg) { document.getElementById('loading-msg').textContent = msg; document.getElementById('loading-overlay').classList.add('show'); }
-function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 
-// ── tabs ──
-function setTab(tab) {}
+// ── 핵심: 10분 그리드 렌더링 ──
+function renderGrid() {
+  const grid = document.getElementById('planner-grid');
+  grid.innerHTML = '';
 
-// ── render timeline ──
-function renderTimeline(type) {
-  const container = document.getElementById(`${type}-timeline`);
-  const blocks = data[type];
-  if (!blocks.length) {
-    container.innerHTML = `<div class="empty-hint">+ 추가로 블록을 만드세요</div>`;
-    return;
-  }
-  const wrap = document.createElement('div');
-  wrap.className = 'timeline-wrap';
-  wrap.style.height = (TH + 16) + 'px';
-  for (let h = START_H; h <= END_H; h++) {
-    const y = (h - START_H) * 60 * PPM;
-    const line = document.createElement('div'); line.className = 'hour-line'; line.style.top = y+'px'; wrap.appendChild(line);
-    const lbl  = document.createElement('div'); lbl.className  = 'hour-label'; lbl.style.top  = y+'px'; lbl.textContent = String(h).padStart(2,'0')+':00'; wrap.appendChild(lbl);
-  }
-  const area = document.createElement('div'); area.style.cssText = `position:relative;height:${TH}px`;
-  blocks.forEach(b => {
-    const top = Math.max(0,(toMin(b.start)-START_H*60)*PPM);
-    const ht  = Math.max(18,(toMin(b.end)-toMin(b.start))*PPM-2);
-    const col = CAT_COLORS[b.cat]||CAT_COLORS['기타'];
-    const el = document.createElement('button'); el.className = 'block';
-    el.style.cssText = `top:${top}px;height:${ht}px;background:${col.bg};color:${col.text}`;
-    el.innerHTML = `<div class="block-title">${b.title}</div>${ht>26?`<div class="block-time">${b.start}–${b.end}</div>`:''}`;
-    el.onclick = () => openModal(type, b.id);
-    area.appendChild(el);
+  HOURS.forEach(h => {
+    // 시간 라벨
+    const labelCell = document.createElement('div');
+    labelCell.className = 'hour-label-cell';
+    labelCell.innerHTML = `<span>${String(h).padStart(2,'0')}:00</span>`;
+    grid.appendChild(labelCell);
+
+    // 계획 열 / 실제 열
+    ['plan','actual'].forEach(type => {
+      const col = document.createElement('div');
+      col.className = 'cells-col';
+
+      // 10분 칸 6개
+      const tenGrid = document.createElement('div');
+      tenGrid.className = 'ten-min-grid';
+
+      for (let m = 0; m < 6; m++) {
+        const min = h * 60 + m * 10;
+        const timeStr = minToStr(min);
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.time = timeStr;
+        cell.dataset.type = type;
+        cell.onclick = () => openModalAtTime(type, timeStr);
+        tenGrid.appendChild(cell);
+      }
+      col.appendChild(tenGrid);
+
+      // 블록 오버레이
+      const blocks = data[type].filter(b => {
+        const bs = toMin(b.start), be = toMin(b.end);
+        const hs = h * 60, he = (h + 1) * 60;
+        return bs < he && be > hs;
+      });
+
+      blocks.forEach(b => {
+        const bs = toMin(b.start), be = toMin(b.end);
+        const hs = h * 60, he = (h + 1) * 60;
+        const startInHour = Math.max(bs, hs) - hs;
+        const endInHour   = Math.min(be, he) - hs;
+        const leftPct  = (startInHour / 60) * 100;
+        const widthPct = ((endInHour - startInHour) / 60) * 100;
+        const col2 = CAT_COLORS[b.cat] || CAT_COLORS['기타'];
+
+        const overlay = document.createElement('button');
+        overlay.className = 'block-overlay';
+        overlay.style.cssText = `left:calc(${leftPct}% + 1px);width:calc(${widthPct}% - 2px);background:${col2.bg};color:${col2.text}`;
+        const spansManyMins = (endInHour - startInHour) >= 20;
+        overlay.innerHTML = `<div class="block-title">${b.title}</div>${spansManyMins ? `<div class="block-time-label">${b.start}–${b.end}</div>` : ''}`;
+        overlay.onclick = (e) => { e.stopPropagation(); openModal(type, b.id); };
+        col.appendChild(overlay);
+      });
+
+      grid.appendChild(col);
+    });
   });
-  wrap.appendChild(area);
-  container.innerHTML = ''; container.appendChild(wrap);
 }
 
-// ── render compare ──
-function renderCompare() {
-  const allTimes = [...new Set([...data.plan,...data.actual].map(b=>b.start))].sort();
-  const el = document.getElementById('compare-rows');
-  if (!allTimes.length) { el.innerHTML='<div style="padding:2rem;text-align:center;font-size:13px;color:var(--text3)">블록을 추가하면 여기서 비교돼요</div>'; return; }
-  el.innerHTML = allTimes.map(t => {
-    const p = data.plan.find(b=>b.start===t), a = data.actual.find(b=>b.start===t);
-    const cls = (p&&a)?(p.cat===a.cat?'row-match':'row-diff'):'';
-    const pC = p?CAT_COLORS[p.cat]:null, aC = a?CAT_COLORS[a.cat]:null;
-    return `<div class="compare-row ${cls}">
-      <div class="compare-time">${t}</div>
-      <div class="compare-cell">${p?`<div class="cell-title" style="color:${pC.text}">${p.title}</div><div class="cell-sub">${p.start}–${p.end} · ${p.cat}</div>`:'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
-      <div class="compare-cell">${a?`<div class="cell-title" style="color:${aC.text}">${a.title}</div><div class="cell-sub">${a.start}–${a.end} · ${a.cat}</div>`:'<span style="font-size:11px;color:var(--text3)">—</span>'}</div>
-    </div>`;
-  }).join('');
+function openModalAtTime(type, timeStr) {
+  const endMin = toMin(timeStr) + 60;
+  const endStr = minToStr(Math.min(endMin, 24*60));
+  openModal(type, null, timeStr, endStr);
 }
 
-// ── modal ──
-function openModal(type, id=null) {
-  currentType=type; editingId=id;
+function openModal(type, id=null, defaultStart='09:00', defaultEnd='10:00') {
+  currentType = type; editingId = id;
   const del = document.getElementById('btn-del');
   if (id) {
     const b = data[type].find(x=>x.id===id);
@@ -387,8 +286,8 @@ function openModal(type, id=null) {
   } else {
     document.getElementById('modal-title').textContent = (type==='plan'?'계획':'실제 기록')+' 추가';
     document.getElementById('f-title').value = '';
-    document.getElementById('f-start').value = '09:00';
-    document.getElementById('f-end').value   = '10:00';
+    document.getElementById('f-start').value = defaultStart;
+    document.getElementById('f-end').value   = defaultEnd;
     document.getElementById('f-cat').value   = '학습';
     document.getElementById('f-memo').value  = '';
     del.style.display = 'none';
@@ -396,7 +295,8 @@ function openModal(type, id=null) {
   document.getElementById('modal-bg').classList.add('open');
   setTimeout(() => document.getElementById('f-title').focus(), 50);
 }
-function closeModal() { document.getElementById('modal-bg').classList.remove('open'); editingId=null; }
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); editingId = null; }
+
 function saveBlock() {
   const title = document.getElementById('f-title').value.trim();
   const start = document.getElementById('f-start').value;
@@ -404,95 +304,73 @@ function saveBlock() {
   const cat   = document.getElementById('f-cat').value;
   const memo  = document.getElementById('f-memo').value.trim();
   if (!title) { document.getElementById('f-title').focus(); return; }
-  if (toMin(end)<=toMin(start)) { alert('종료 시간은 시작 시간 이후여야 해요'); return; }
+  if (toMin(end) <= toMin(start)) { alert('종료 시간은 시작 시간 이후여야 해요'); return; }
   if (editingId) {
     const idx = data[currentType].findIndex(x=>x.id===editingId);
-    data[currentType][idx] = {id:editingId,title,start,end,cat,memo};
+    data[currentType][idx] = { id:editingId, title, start, end, cat, memo };
   } else {
-    data[currentType].push({id:uid(),title,start,end,cat,memo});
+    data[currentType].push({ id:uid(), title, start, end, cat, memo });
   }
-  closeModal(); renderTimeline('plan'); renderTimeline('actual'); renderCompare();
+  closeModal();
+  renderGrid();
   scheduleAutoSave();
 }
+
 function deleteBlock() {
   data[currentType] = data[currentType].filter(x=>x.id!==editingId);
-  closeModal(); renderTimeline('plan'); renderTimeline('actual'); renderCompare();
+  closeModal();
+  renderGrid();
   scheduleAutoSave();
 }
 
-let saveTimer = null;
+document.getElementById('modal-bg').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+
 function scheduleAutoSave() {
   clearTimeout(saveTimer);
-  setStatus('저장 대기 중...', '');
+  setStatus('저장 대기 중...');
   saveTimer = setTimeout(() => saveToNotion(), 1500);
-}
-document.getElementById('modal-bg').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
-
-// ── notion API ──
-async function notionFetch(path, opts={}) {
-  const res = await fetch('http://localhost:8765/notion' + path, {
-    ...opts,
-    headers: {
-      'Authorization': 'Bearer ' + notionToken,
-      'Notion-Version': '2022-06-28',
-      'Content-Type': 'application/json',
-      ...(opts.headers||{})
-    }
-  });
-  if (!res.ok) throw new Error(`Notion API 오류: ${res.status}`);
-  return res.json();
 }
 
 async function saveToNotion() {
-  const date = currentDate;
-  if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
   const blocks = [
     ...data.plan.map(b=>({...b, type:'plan'})),
     ...data.actual.map(b=>({...b, type:'actual'}))
   ];
-  if (!blocks.length) { setStatus('저장할 블록이 없어요','err'); return; }
-  showLoading('노션에 저장 중...');
+  setStatus('저장 중...', 'syncing');
   try {
     const res = await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, blocks })
+      body: JSON.stringify({ date: currentDate, blocks })
     });
-    if (!res.ok) throw new Error('서버 오류: ' + res.status);
-    const result = await res.json();
-    if (result.error) throw new Error(result.error);
-    setStatus(`${result.saved}개 블록 저장 완료`, 'ok');
+    if (!res.ok) throw new Error('서버 오류');
+    setStatus('저장됨', 'ok');
   } catch(e) {
-    setStatus('저장 실패: ' + e.message, 'err');
+    setStatus('저장 실패', 'err');
   }
-  hideLoading();
 }
 
 async function loadFromNotion() {
-  const date = currentDate;
-  if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
-  showLoading('노션에서 불러오는 중...');
+  setStatus('불러오는 중...', 'syncing');
   try {
     const res = await fetch('/api/load', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date })
+      body: JSON.stringify({ date: currentDate })
     });
-    if (!res.ok) throw new Error('서버 오류: ' + res.status);
+    if (!res.ok) throw new Error('서버 오류');
     const result = await res.json();
-    if (result.error) throw new Error(result.error);
-    data.plan   = result.plan.map(b=>({...b, id:uid()}));
-    data.actual = result.actual.map(b=>({...b, id:uid()}));
-    renderTimeline('plan'); renderTimeline('actual'); renderCompare();
-    const total = data.plan.length + data.actual.length;
-    setStatus(`${total}개 블록 불러옴`, 'ok');
+    data.plan   = (result.plan   || []).map(b=>({...b, id:uid()}));
+    data.actual = (result.actual || []).map(b=>({...b, id:uid()}));
+    renderGrid();
+    setStatus('동기화됨', 'ok');
   } catch(e) {
-    setStatus('불러오기 실패: ' + e.message, 'err');
+    setStatus('오류', 'err');
   }
-  hideLoading();
 }
 
-init();
+document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+renderGrid();
 loadFromNotion();
 </script>
 </body>
