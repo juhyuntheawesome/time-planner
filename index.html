@@ -92,10 +92,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="header">
   <div class="date-nav">
     <button class="nav-btn" onclick="changeDate(-1)">‹</button>
-    <label class="date-label" id="date-label" style="cursor:pointer;position:relative;">
-      <span id="date-label-text"></span>
-      <input type="date" id="date-picker" style="position:absolute;opacity:0;inset:0;width:100%;cursor:pointer;" onchange="pickDate(this.value)">
-    </label>
+    <div style="position:relative;">
+      <button class="date-label" id="date-label-text" onclick="toggleCal()" style="cursor:pointer;background:none;border:none;font-size:15px;font-weight:600;min-width:140px;"></button>
+      <div id="cal-popup" style="display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg);border:0.5px solid var(--border2);border-radius:10px;padding:12px;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,0.15);width:220px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <button onclick="calMonth(-1)" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--text2);padding:2px 6px;">‹</button>
+          <span id="cal-title" style="font-size:13px;font-weight:500;"></span>
+          <button onclick="calMonth(1)" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--text2);padding:2px 6px;">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">
+          <span style="font-size:10px;color:var(--text3);padding:2px;">일</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">월</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">화</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">수</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">목</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">금</span>
+          <span style="font-size:10px;color:var(--text3);padding:2px;">토</span>
+        </div>
+        <div id="cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;"></div>
+      </div>
+    </div>
     <button class="nav-btn" onclick="changeDate(1)">›</button>
   </div>
   <span class="sync-badge" id="sync-badge" style="position:absolute;right:16px;"></span>
@@ -162,7 +178,8 @@ const HOURS = Array.from({length: END_H - START_H}, (_, i) => START_H + i);
 
 let data = { plan: [], actual: [] };
 let currentType = 'plan', editingId = null;
-let currentDate = new Date().toISOString().slice(0, 10);
+const _today = new Date();
+let currentDate = `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`;
 let saveTimer = null;
 
 // time selects
@@ -189,14 +206,88 @@ function formatDateLabel(d) {
 }
 
 function changeDate(delta) {
-  const d = new Date(currentDate + 'T00:00:00');
-  d.setDate(d.getDate() + delta);
-  currentDate = d.toISOString().slice(0, 10);
-  document.getElementById('date-label-text').textContent = formatDateLabel(currentDate);
-  document.getElementById('date-picker').value = currentDate;
+  const [y, m, d] = currentDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + delta);
+  currentDate = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  updateDateUI();
   data = { plan: [], actual: [] };
   renderGrid();
   loadFromNotion();
+}
+
+function pickDate(val) {
+  if (!val) return;
+  currentDate = val;
+  const [y, m] = val.split('-').map(Number);
+  calYear = y; calMonth_ = m;
+  updateDateUI();
+  data = { plan: [], actual: [] };
+  renderGrid();
+  loadFromNotion();
+}
+
+function updateDateUI() {
+  document.getElementById('date-label-text').textContent = formatDateLabel(currentDate);
+}
+
+let calYear = 0, calMonth_ = 0;
+
+function toggleCal() {
+  const pop = document.getElementById('cal-popup');
+  if (pop.style.display === 'none') {
+    const [y, m] = currentDate.split('-').map(Number);
+    calYear = y; calMonth_ = m;
+    renderCal();
+    pop.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', closeCal), 0);
+  } else {
+    pop.style.display = 'none';
+    document.removeEventListener('click', closeCal);
+  }
+}
+
+function closeCal(e) {
+  const pop = document.getElementById('cal-popup');
+  if (!pop.contains(e.target) && e.target.id !== 'date-label-text') {
+    pop.style.display = 'none';
+    document.removeEventListener('click', closeCal);
+  }
+}
+
+function calMonth(delta) {
+  calMonth_ += delta;
+  if (calMonth_ > 12) { calMonth_ = 1; calYear++; }
+  if (calMonth_ < 1)  { calMonth_ = 12; calYear--; }
+  renderCal();
+}
+
+function renderCal() {
+  const [cy, cm, cd] = currentDate.split('-').map(Number);
+  document.getElementById('cal-title').textContent = `${calYear}년 ${calMonth_}월`;
+  const first = new Date(calYear, calMonth_ - 1, 1).getDay();
+  const days  = new Date(calYear, calMonth_, 0).getDate();
+  const container = document.getElementById('cal-days');
+  container.innerHTML = '';
+  for (let i = 0; i < first; i++) {
+    const empty = document.createElement('span'); container.appendChild(empty);
+  }
+  for (let d = 1; d <= days; d++) {
+    const btn = document.createElement('button');
+    const dateStr = `${calYear}-${String(calMonth_).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === currentDate;
+    btn.textContent = d;
+    btn.style.cssText = `border:none;cursor:pointer;border-radius:50%;width:26px;height:26px;font-size:12px;
+      background:${isToday ? 'var(--text)' : 'none'};
+      color:${isToday ? 'var(--bg)' : 'var(--text)'};
+      font-weight:${isToday ? '600' : '400'};`;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      pickDate(dateStr);
+      document.getElementById('cal-popup').style.display = 'none';
+      document.removeEventListener('click', closeCal);
+    };
+    container.appendChild(btn);
+  }
 }
 
 function setStatus(msg, type='') {
@@ -373,8 +464,9 @@ async function loadFromNotion() {
   }
 }
 
-document.getElementById('date-label-text').textContent = formatDateLabel(currentDate);
-  document.getElementById('date-picker').value = currentDate;
+const [_iy, _im] = currentDate.split('-').map(Number);
+calYear = _iy; calMonth_ = _im;
+updateDateUI();
 renderGrid();
 loadFromNotion();
 </script>
