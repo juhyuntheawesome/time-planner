@@ -301,8 +301,10 @@ function renderWeekGrid() {
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   })();
-  const PPM_AUTO = 1.4;
-  const TOTAL_H = (END_H - START_H) * 60 * PPM_AUTO;
+  const headerH = document.querySelector('.header').offsetHeight + 40; // header + col-header
+  const availH = window.innerHeight - headerH;
+  const PPM_AUTO = availH / ((END_H - START_H) * 60);
+  const TOTAL_H = availH;
   const COL = 40;
 
   // 헤더 HTML
