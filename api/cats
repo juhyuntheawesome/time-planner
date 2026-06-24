@@ -1,0 +1,48 @@
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const NOTION_TOKEN = process.env.NOTION_TOKEN;
+  const DB_ID = process.env.NOTION_DB_ID;
+
+  // 노션 색상 → 플래너 색상 매핑
+  const NOTION_COLOR_MAP = {
+    default: { bg: '#f3f4f6', text: '#374151' },
+    gray:    { bg: '#f3f4f6', text: '#374151' },
+    brown:   { bg: '#fef3c7', text: '#78350f' },
+    orange:  { bg: '#ffedd5', text: '#7c2d12' },
+    yellow:  { bg: '#fef9c3', text: '#713f12' },
+    green:   { bg: '#dcfce7', text: '#14532d' },
+    blue:    { bg: '#dbeafe', text: '#1e3a5f' },
+    purple:  { bg: '#ede9fe', text: '#3b0764' },
+    pink:    { bg: '#fce7f3', text: '#831843' },
+    red:     { bg: '#fef2f2', text: '#991b1b' },
+  };
+
+  try {
+    const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}`, {
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+      }
+    });
+    const data = await r.json();
+    const options = data.properties?.['카테고리']?.select?.options || [];
+
+    const cats = options.map(opt => {
+      const colorKey = opt.color || 'default';
+      const color = NOTION_COLOR_MAP[colorKey] || NOTION_COLOR_MAP.default;
+      // 이름에서 이모지 분리
+      const match = opt.name.match(/^(\p{Emoji}+)\s*(.+)$/u);
+      const emoji = match ? match[1] : '⭐';
+      const name  = match ? match[2] : opt.name;
+      return { name, emoji, bg: color.bg, text: color.text, notionColor: colorKey };
+    });
+
+    res.status(200).json({ cats });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+}
