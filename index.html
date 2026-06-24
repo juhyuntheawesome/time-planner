@@ -22,9 +22,9 @@
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
 
 /* header */
-.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 0.5px solid var(--border2); position: sticky; top: 0; background: var(--bg); z-index: 10; }
+.header { display: flex; align-items: center; justify-content: center; padding: 10px 16px; border-bottom: 0.5px solid var(--border2); background: var(--bg); position: relative; }
 .date-nav { display: flex; align-items: center; gap: 8px; }
-.nav-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 16px; line-height: 1; }
+.nav-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 8px 16px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 18px; line-height: 1; min-width: 44px; min-height: 44px; }
 .nav-btn:hover { background: var(--bg2); }
 .date-label { font-size: 15px; font-weight: 600; min-width: 140px; text-align: center; }
 .sync-badge { font-size: 11px; color: var(--text3); padding: 3px 8px; border-radius: 20px; background: var(--bg2); }
@@ -95,7 +95,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <span class="date-label" id="date-label"></span>
     <button class="nav-btn" onclick="changeDate(1)">›</button>
   </div>
-  <span class="sync-badge" id="sync-badge"></span>
+  <span class="sync-badge" id="sync-badge" style="position:absolute;right:16px;"></span>
 </div>
 
 <div class="col-headers">
