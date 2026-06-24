@@ -92,7 +92,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="header">
   <div class="date-nav">
     <button class="nav-btn" onclick="changeDate(-1)">‹</button>
-    <span class="date-label" id="date-label"></span>
+    <label class="date-label" id="date-label" style="cursor:pointer;position:relative;">
+      <span id="date-label-text"></span>
+      <input type="date" id="date-picker" style="position:absolute;opacity:0;inset:0;width:100%;cursor:pointer;" onchange="pickDate(this.value)">
+    </label>
     <button class="nav-btn" onclick="changeDate(1)">›</button>
   </div>
   <span class="sync-badge" id="sync-badge" style="position:absolute;right:16px;"></span>
@@ -189,7 +192,8 @@ function changeDate(delta) {
   const d = new Date(currentDate + 'T00:00:00');
   d.setDate(d.getDate() + delta);
   currentDate = d.toISOString().slice(0, 10);
-  document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+  document.getElementById('date-label-text').textContent = formatDateLabel(currentDate);
+  document.getElementById('date-picker').value = currentDate;
   data = { plan: [], actual: [] };
   renderGrid();
   loadFromNotion();
@@ -369,7 +373,8 @@ async function loadFromNotion() {
   }
 }
 
-document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+document.getElementById('date-label-text').textContent = formatDateLabel(currentDate);
+  document.getElementById('date-picker').value = currentDate;
 renderGrid();
 loadFromNotion();
 </script>
