@@ -193,7 +193,8 @@ async function loadCats() {
     const res = await fetch('/api/cats');
     const data = await res.json();
     if (data.cats && data.cats.length) {
-      categories = data.cats;
+      const hidden = JSON.parse(localStorage.getItem('hidden_cats') || '[]');
+      categories = data.cats.filter(c => !hidden.includes(c.notionName));
     }
   } catch(e) {
     console.warn('카테고리 로드 실패', e);
@@ -321,22 +322,15 @@ async function addCat() {
   } catch(e) { alert('추가 실패: ' + e.message); }
 }
 
-async function deleteCat(i) {
+function deleteCat(i) {
   if (categories.length <= 1) { alert('카테고리가 최소 1개는 있어야 해요'); return; }
-  if (!confirm(`"${categories[i].name}" 카테고리를 삭제할까요?`)) return;
-  try {
-    const res = await fetch('/api/cats', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notionName: categories[i].notionName })
-    });
-    const data = await res.json();
-    if (data.error) { alert(data.error); return; }
-    categories.splice(i, 1);
-    refreshCatSelect();
-    renderCatList();
-    renderGrid();
-  } catch(e) { alert('삭제 실패: ' + e.message); }
+  const hidden = JSON.parse(localStorage.getItem('hidden_cats') || '[]');
+  hidden.push(categories[i].notionName);
+  localStorage.setItem('hidden_cats', JSON.stringify(hidden));
+  categories.splice(i, 1);
+  refreshCatSelect();
+  renderCatList();
+  renderGrid();
 }
 function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
 function minToStr(min) { return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`; }
