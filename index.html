@@ -125,6 +125,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="planner-grid" id="planner-grid"></div>
 
+<!-- 카테고리 관리 모달 -->
+<div class="modal-bg" id="cat-modal-bg">
+  <div class="modal" style="width:320px;">
+    <h3 style="margin-bottom:0.8rem;">카테고리 관리</h3>
+    <div id="cat-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:0.5px solid var(--border2);">
+      <input type="text" id="new-cat-emoji" placeholder="😀" style="width:52px;padding:6px 8px;font-size:14px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);">
+      <input type="text" id="new-cat-name" placeholder="새 카테고리 이름" style="flex:1;padding:6px 8px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);">
+      <button onclick="addCat()" style="padding:6px 12px;font-size:12px;border:0.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:var(--bg2);color:var(--text);font-weight:500;">추가</button>
+    </div>
+    <div style="text-align:right;margin-top:10px;">
+      <button class="btn-cancel" onclick="closeCatManager()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <h3 id="modal-title">블록 추가</h3>
@@ -132,18 +148,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="frow"><label>시간</label>
       <div class="time-row"><select id="f-start"></select><select id="f-end"></select></div>
     </div>
-    <div class="frow"><label>카테고리</label>
-      <select id="f-cat">
-        <option value="집중업무">🎯 집중업무</option>
-        <option value="학습">📚 학습</option>
-        <option value="식사">🍽️ 식사</option>
-        <option value="운동">🏃 운동</option>
-        <option value="휴식">💤 휴식</option>
-        <option value="루틴">🚿 루틴</option>
-        <option value="이동">🚗 이동</option>
-        <option value="소통">💬 소통</option>
-        <option value="기타">⚡ 기타</option>
-      </select>
+    <div class="frow">
+      <label style="display:flex;align-items:center;justify-content:space-between;">
+        카테고리 <button onclick="openCatManager()" style="font-size:10px;border:0.5px solid var(--border2);border-radius:4px;padding:1px 7px;cursor:pointer;background:none;color:var(--text2);">관리</button>
+      </label>
+      <select id="f-cat"></select>
     </div>
     <div class="frow"><label>메모</label><textarea id="f-memo" placeholder="선택사항"></textarea></div>
     <div class="modal-actions">
@@ -155,23 +164,46 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <script>
-const CAT_COLORS = {
-  '집중업무': { bg: '#dbeafe', text: '#1e3a5f' },
-  '학습':     { bg: '#dcfce7', text: '#14532d' },
-  '식사':     { bg: '#fef9c3', text: '#713f12' },
-  '운동':     { bg: '#ffedd5', text: '#7c2d12' },
-  '휴식':     { bg: '#f3f4f6', text: '#374151' },
-  '루틴':     { bg: '#ede9fe', text: '#3b0764' },
-  '이동':     { bg: '#f5f5f4', text: '#44403c' },
-  '소통':     { bg: '#fce7f3', text: '#831843' },
-  '기타':     { bg: '#d1fae5', text: '#064e3b' },
-};
-const CAT_MAP = {
-  '집중업무':'🎯 집중업무','학습':'📚 학습','식사':'🍽️ 식사',
-  '운동':'🏃 운동','휴식':'💤 휴식','루틴':'🚿 루틴',
-  '이동':'🚗 이동','소통':'💬 소통','기타':'⚡ 기타'
-};
-const CAT_FROM = Object.fromEntries(Object.entries(CAT_MAP).map(([k,v])=>[v,k]));
+const COLOR_PALETTE = [
+  { bg: '#dbeafe', text: '#1e3a5f' },
+  { bg: '#dcfce7', text: '#14532d' },
+  { bg: '#fef9c3', text: '#713f12' },
+  { bg: '#ffedd5', text: '#7c2d12' },
+  { bg: '#f3f4f6', text: '#374151' },
+  { bg: '#ede9fe', text: '#3b0764' },
+  { bg: '#fce7f3', text: '#831843' },
+  { bg: '#d1fae5', text: '#064e3b' },
+  { bg: '#fae8ff', text: '#6b21a8' },
+  { bg: '#fef2f2', text: '#991b1b' },
+  { bg: '#ecfdf5', text: '#065f46' },
+  { bg: '#fff7ed', text: '#9a3412' },
+];
+
+const DEFAULT_CATS = [
+  { name: '집중업무', emoji: '🎯', color: 0 },
+  { name: '학습',     emoji: '📚', color: 1 },
+  { name: '식사',     emoji: '🍽️', color: 2 },
+  { name: '운동',     emoji: '🏃', color: 3 },
+  { name: '휴식',     emoji: '💤', color: 4 },
+  { name: '루틴',     emoji: '🚿', color: 5 },
+  { name: '이동',     emoji: '🚗', color: 6 },
+  { name: '소통',     emoji: '💬', color: 7 },
+  { name: '기타',     emoji: '⚡', color: 1 },
+];
+
+let categories = JSON.parse(localStorage.getItem('planner_cats') || 'null') || DEFAULT_CATS;
+
+function saveCats() { localStorage.setItem('planner_cats', JSON.stringify(categories)); }
+function getCatColor(name) {
+  const cat = categories.find(c => c.name === name);
+  return cat ? COLOR_PALETTE[cat.color % COLOR_PALETTE.length] : { bg: '#f3f4f6', text: '#374151' };
+}
+function getCatLabel(name) {
+  const cat = categories.find(c => c.name === name);
+  return cat ? `${cat.emoji} ${cat.name}` : name;
+}
+const CAT_MAP = Object.fromEntries(categories.map(c => [c.name, `${c.emoji} ${c.name}`]));
+const CAT_FROM = Object.fromEntries(categories.map(c => [`${c.emoji} ${c.name}`, c.name]));
 
 const START_H = 6, END_H = 23;
 const HOURS = Array.from({length: END_H - START_H}, (_, i) => START_H + i);
@@ -196,6 +228,57 @@ document.getElementById('f-start').value = '09:00';
 document.getElementById('f-end').value = '10:00';
 
 function uid() { return Math.random().toString(36).slice(2); }
+
+function refreshCatSelect(selectedVal) {
+  const sel = document.getElementById('f-cat');
+  sel.innerHTML = categories.map(c =>
+    `<option value="${c.name}">${c.emoji} ${c.name}</option>`
+  ).join('');
+  if (selectedVal) sel.value = selectedVal;
+}
+
+function openCatManager() {
+  renderCatList();
+  document.getElementById('cat-modal-bg').classList.add('open');
+}
+function closeCatManager() {
+  document.getElementById('cat-modal-bg').classList.remove('open');
+  refreshCatSelect(document.getElementById('f-cat').value);
+}
+
+function renderCatList() {
+  const list = document.getElementById('cat-list');
+  list.innerHTML = categories.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:0.5px solid var(--border);">
+      <span style="font-size:16px;width:24px;text-align:center;">${c.emoji}</span>
+      <span style="flex:1;font-size:13px;">${c.name}</span>
+      <div style="width:14px;height:14px;border-radius:50%;background:${COLOR_PALETTE[c.color % COLOR_PALETTE.length].bg};border:1px solid var(--border2);cursor:pointer;" onclick="cycleCatColor(${i})" title="색상 변경"></div>
+      <button onclick="deleteCat(${i})" style="border:none;background:none;cursor:pointer;color:#dc2626;font-size:14px;padding:0 4px;">✕</button>
+    </div>
+  `).join('');
+}
+
+function cycleCatColor(i) {
+  categories[i].color = (categories[i].color + 1) % COLOR_PALETTE.length;
+  saveCats(); renderCatList(); renderGrid();
+}
+
+function addCat() {
+  const emoji = document.getElementById('new-cat-emoji').value.trim() || '⭐';
+  const name  = document.getElementById('new-cat-name').value.trim();
+  if (!name) { document.getElementById('new-cat-name').focus(); return; }
+  if (categories.find(c => c.name === name)) { alert('이미 있는 카테고리예요'); return; }
+  categories.push({ name, emoji, color: categories.length % COLOR_PALETTE.length });
+  saveCats(); renderCatList(); renderGrid();
+  document.getElementById('new-cat-emoji').value = '';
+  document.getElementById('new-cat-name').value = '';
+}
+
+function deleteCat(i) {
+  if (categories.length <= 1) { alert('카테고리가 최소 1개는 있어야 해요'); return; }
+  categories.splice(i, 1);
+  saveCats(); renderCatList(); renderGrid();
+}
 function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
 function minToStr(min) { return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`; }
 
@@ -344,7 +427,7 @@ function renderGrid() {
         const endInHour   = Math.min(be, he) - hs;
         const leftPct  = (startInHour / 60) * 100;
         const widthPct = ((endInHour - startInHour) / 60) * 100;
-        const col2 = CAT_COLORS[b.cat] || CAT_COLORS['기타'];
+        const col2 = getCatColor(b.cat);
 
         const overlay = document.createElement('button');
         overlay.className = 'block-overlay';
@@ -375,7 +458,7 @@ function openModal(type, id=null, defaultStart='09:00', defaultEnd='10:00') {
     document.getElementById('f-title').value = b.title;
     document.getElementById('f-start').value = b.start;
     document.getElementById('f-end').value   = b.end;
-    document.getElementById('f-cat').value   = b.cat;
+    refreshCatSelect(b.cat);
     document.getElementById('f-memo').value  = b.memo||'';
     del.style.display = 'block';
   } else {
@@ -383,7 +466,7 @@ function openModal(type, id=null, defaultStart='09:00', defaultEnd='10:00') {
     document.getElementById('f-title').value = '';
     document.getElementById('f-start').value = defaultStart;
     document.getElementById('f-end').value   = defaultEnd;
-    document.getElementById('f-cat').value   = '학습';
+    refreshCatSelect('학습');
     document.getElementById('f-memo').value  = '';
     del.style.display = 'none';
   }
@@ -419,6 +502,7 @@ function deleteBlock() {
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+document.getElementById('cat-modal-bg').addEventListener('click', e => { if (e.target===e.currentTarget) closeCatManager(); });
 
 function scheduleAutoSave() {
   clearTimeout(saveTimer);
@@ -467,6 +551,7 @@ async function loadFromNotion() {
 const [_iy, _im] = currentDate.split('-').map(Number);
 calYear = _iy; calMonth_ = _im;
 updateDateUI();
+refreshCatSelect();
 renderGrid();
 loadFromNotion();
 </script>
