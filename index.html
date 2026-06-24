@@ -604,9 +604,11 @@ async function loadFromNotion() {
 const [_iy, _im] = currentDate.split('-').map(Number);
 calYear = _iy; calMonth_ = _im;
 updateDateUI();
-await loadCats();
-renderGrid();
-loadFromNotion();
+(async () => {
+  await loadCats();
+  renderGrid();
+  loadFromNotion();
+})();
 </script>
 </body>
 </html>
