@@ -429,31 +429,22 @@ async function notionFetch(path, opts={}) {
 async function saveToNotion() {
   const date = dateInput.value;
   if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
-  const all = [...data.plan.map(b=>({...b,type:'plan'})), ...data.actual.map(b=>({...b,type:'actual'}))];
-  if (!all.length) { setStatus('저장할 블록이 없어요','err'); return; }
-
-  showLoading(`노션에 저장 중... (0/${all.length})`);
-  let saved = 0;
-  const WEBHOOK = 'https://hook.us2.make.com/h9d3rp6wpj62bv4wk8ox3jyq5asth6a3';
+  const blocks = [
+    ...data.plan.map(b=>({...b, type:'plan'})),
+    ...data.actual.map(b=>({...b, type:'actual'}))
+  ];
+  if (!blocks.length) { setStatus('저장할 블록이 없어요','err'); return; }
+  showLoading('노션에 저장 중...');
   try {
-    for (const b of all) {
-      await fetch(WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `[${date}] ${b.title}`,
-          date:  date,
-          start: b.start,
-          end:   b.end,
-          cat:   CAT_TO_NOTION[b.cat] || b.cat,
-          type:  b.type === 'plan' ? '계획' : '실제',
-          memo:  b.memo || ''
-        })
-      });
-      saved++;
-      document.getElementById('loading-msg').textContent = `노션에 저장 중... (${saved}/${all.length})`;
-    }
-    setStatus(`${saved}개 블록 저장 완료`, 'ok');
+    const res = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, blocks })
+    });
+    if (!res.ok) throw new Error('서버 오류: ' + res.status);
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    setStatus(`${result.saved}개 블록 저장 완료`, 'ok');
   } catch(e) {
     setStatus('저장 실패: ' + e.message, 'err');
   }
