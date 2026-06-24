@@ -259,7 +259,7 @@ dateInput.value = new Date().toISOString().slice(0,10);
 function init() {
   notionToken = localStorage.getItem('planner_token') || '';
   notionDbId  = localStorage.getItem('planner_dbid')  || '';
-  if (false) {
+  if (true) {
     document.getElementById('inp-token').value = notionToken;
     document.getElementById('inp-dbid').value  = notionDbId;
     launchApp();
@@ -286,7 +286,7 @@ function showSetup() {
 function launchApp() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('notion-bar').style.display = notionToken ? 'flex' : 'none';
+  document.getElementById('notion-bar').style.display = 'flex';
   renderTimeline('plan'); renderTimeline('actual');
 }
 function showSetupError(msg) {
