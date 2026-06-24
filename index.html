@@ -146,7 +146,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <h3 id="modal-title">블록 추가</h3>
     <div class="frow"><label>제목</label><input type="text" id="f-title" placeholder="예: 공부, 점심, 운동"></div>
     <div class="frow"><label>시간</label>
-      <div class="time-row"><select id="f-start"></select><select id="f-end"></select></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <select id="f-start-h" style="width:58px;padding:6px 4px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);"></select>
+        <span style="font-size:13px;color:var(--text2);">시</span>
+        <select id="f-start-m" style="width:58px;padding:6px 4px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);"></select>
+        <span style="font-size:13px;color:var(--text2);">분 ~</span>
+        <select id="f-end-h" style="width:58px;padding:6px 4px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);"></select>
+        <span style="font-size:13px;color:var(--text2);">시</span>
+        <select id="f-end-m" style="width:58px;padding:6px 4px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);"></select>
+        <span style="font-size:13px;color:var(--text2);">분</span>
+      </div>
     </div>
     <div class="frow">
       <label style="display:flex;align-items:center;justify-content:space-between;">
@@ -215,17 +224,29 @@ let currentDate = `${_today.getFullYear()}-${String(_today.getMonth()+1).padStar
 let saveTimer = null;
 
 // time selects
-const times = [];
-for (let h = 5; h <= 24; h++) for (let m = 0; m < 60; m += 10) {
-  if (h === 24 && m > 0) break;
-  times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-}
-['f-start','f-end'].forEach(id => {
+// 시/분 select 옵션 생성
+['f-start-h','f-end-h'].forEach(id => {
   const sel = document.getElementById(id);
-  times.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+  for (let h = 0; h <= 24; h++)
+    sel.innerHTML += `<option value="${String(h).padStart(2,'0')}">${String(h).padStart(2,'0')}</option>`;
 });
-document.getElementById('f-start').value = '09:00';
-document.getElementById('f-end').value = '10:00';
+['f-start-m','f-end-m'].forEach(id => {
+  const sel = document.getElementById(id);
+  for (let m = 0; m < 60; m++)
+    sel.innerHTML += `<option value="${String(m).padStart(2,'0')}">${String(m).padStart(2,'0')}</option>`;
+});
+
+function getTimeVal(prefix) {
+  const h = document.getElementById(`${prefix}-h`).value;
+  const m = document.getElementById(`${prefix}-m`).value;
+  return `${h}:${m}`;
+}
+function setTimeVal(prefix, val) {
+  if (!val) return;
+  const [h, m] = val.split(':');
+  document.getElementById(`${prefix}-h`).value = h;
+  document.getElementById(`${prefix}-m`).value = m;
+}
 
 function uid() { return Math.random().toString(36).slice(2); }
 
@@ -484,16 +505,16 @@ function openModal(type, id=null, defaultStart='09:00', defaultEnd='10:00') {
     const b = data[type].find(x=>x.id===id);
     document.getElementById('modal-title').textContent = '블록 수정';
     document.getElementById('f-title').value = b.title;
-    document.getElementById('f-start').value = b.start;
-    document.getElementById('f-end').value   = b.end;
+    setTimeVal('f-start', b.start);
+    setTimeVal('f-end', b.end);
     refreshCatSelect(b.cat);
     document.getElementById('f-memo').value  = b.memo||'';
     del.style.display = 'block';
   } else {
     document.getElementById('modal-title').textContent = (type==='plan'?'계획':'실제 기록')+' 추가';
     document.getElementById('f-title').value = '';
-    document.getElementById('f-start').value = defaultStart;
-    document.getElementById('f-end').value   = defaultEnd;
+    setTimeVal('f-start', defaultStart);
+    setTimeVal('f-end', defaultEnd);
     refreshCatSelect('학습');
     document.getElementById('f-memo').value  = '';
     del.style.display = 'none';
@@ -505,8 +526,8 @@ function closeModal() { document.getElementById('modal-bg').classList.remove('op
 
 function saveBlock() {
   const title = document.getElementById('f-title').value.trim();
-  const start = document.getElementById('f-start').value;
-  const end   = document.getElementById('f-end').value;
+  const start = getTimeVal('f-start');
+  const end   = getTimeVal('f-end');
   const cat   = document.getElementById('f-cat').value;
   const memo  = document.getElementById('f-memo').value.trim();
   if (!title) { document.getElementById('f-title').focus(); return; }
