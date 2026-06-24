@@ -21,14 +21,11 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 1. 해당 날짜 기존 항목 조회
     const existing = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
       method: 'POST', headers,
       body: JSON.stringify({ filter: { property: '날짜', date: { equals: date } } })
     });
     const existingData = await existing.json();
-
-    // 2. 기존 항목 전부 삭제(archive)
     await Promise.all(existingData.results.map(page =>
       fetch(`https://api.notion.com/v1/pages/${page.id}`, {
         method: 'PATCH', headers,
@@ -36,7 +33,6 @@ export default async function handler(req, res) {
       })
     ));
 
-    // 3. 새 블록 저장
     await Promise.all(blocks.map(b =>
       fetch('https://api.notion.com/v1/pages', {
         method: 'POST', headers,
@@ -45,8 +41,8 @@ export default async function handler(req, res) {
           properties: {
             '제목':    { title: [{ text: { content: `[${date}] ${b.title}` } }] },
             '날짜':    { date: { start: date } },
-            '시작 시간': { select: { name: b.start } },
-            '종료 시간': { select: { name: b.end } },
+            '시작 시간': { rich_text: [{ text: { content: b.start } }] },
+            '종료 시간': { rich_text: [{ text: { content: b.end } }] },
             '카테고리': { select: { name: CAT_MAP[b.cat] || b.cat } },
             '유형':    { select: { name: b.type === 'plan' ? '계획' : '실제' } },
             '완료':    { checkbox: false },
