@@ -35,8 +35,8 @@ export default async function handler(req, res) {
       const type     = p['유형']?.select?.name === '계획' ? 'plan' : 'actual';
       const titleRaw = p['제목']?.title?.[0]?.text?.content || '';
       const title    = titleRaw.replace(/^\[\d{4}-\d{2}-\d{2}\] /, '');
-      const start    = p['시작 시간']?.select?.name || '';
-      const end      = p['종료 시간']?.select?.name || '';
+      const start    = p['시작 시간']?.rich_text?.[0]?.text?.content || '';
+      const end      = p['종료 시간']?.rich_text?.[0]?.text?.content || '';
       const catRaw   = p['카테고리']?.select?.name || '';
       const cat      = CAT_MAP[catRaw] || '기타';
       const memo     = p['메모']?.rich_text?.[0]?.text?.content || '';
