@@ -252,15 +252,43 @@ function renderCatList() {
     <div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:0.5px solid var(--border);">
       <span style="font-size:16px;width:24px;text-align:center;">${c.emoji}</span>
       <span style="flex:1;font-size:13px;">${c.name}</span>
-      <div style="width:14px;height:14px;border-radius:50%;background:${COLOR_PALETTE[c.color % COLOR_PALETTE.length].bg};border:1px solid var(--border2);cursor:pointer;" onclick="cycleCatColor(${i})" title="색상 변경"></div>
+      <div style="width:14px;height:14px;border-radius:50%;background:${COLOR_PALETTE[c.color % COLOR_PALETTE.length].bg};border:1px solid var(--border2);cursor:pointer;" onclick="cycleCatColor(${i}, this)" title="색상 변경"></div>
       <button onclick="deleteCat(${i})" style="border:none;background:none;cursor:pointer;color:#dc2626;font-size:14px;padding:0 4px;">✕</button>
     </div>
   `).join('');
 }
 
-function cycleCatColor(i) {
-  categories[i].color = (categories[i].color + 1) % COLOR_PALETTE.length;
-  saveCats(); renderCatList(); renderGrid();
+function cycleCatColor(i, el) {
+  const existing = document.getElementById('color-picker-popup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'color-picker-popup';
+  popup.style.cssText = 'position:absolute;background:var(--bg);border:0.5px solid var(--border2);border-radius:8px;padding:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,0.15);';
+
+  COLOR_PALETTE.forEach((col, ci) => {
+    const dot = document.createElement('button');
+    dot.style.cssText = `width:22px;height:22px;border-radius:50%;background:${col.bg};border:${ci === categories[i].color ? '2px solid var(--text)' : '1px solid var(--border2)'};cursor:pointer;`;
+    dot.onclick = (e) => {
+      e.stopPropagation();
+      categories[i].color = ci;
+      saveCats(); renderCatList(); renderGrid();
+      popup.remove();
+    };
+    popup.appendChild(dot);
+  });
+
+  el.style.position = 'relative';
+  el.parentElement.style.position = 'relative';
+  el.parentElement.appendChild(popup);
+  popup.style.top = '24px';
+  popup.style.right = '0';
+
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 0);
 }
 
 function addCat() {
