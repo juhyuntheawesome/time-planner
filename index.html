@@ -340,16 +340,18 @@ function renderWeekGrid() {
 
       blocks.forEach(b => {
         const bs = toMin(b.start), be = toMin(b.end);
-        const startInHour = Math.max(bs, h*60) - h*60;
-        const endInHour   = Math.min(be, (h+1)*60) - h*60;
-        const topPct  = (startInHour / 60) * 100;
-        const heightPct = ((endInHour - startInHour) / 60) * 100;
-        const col = getCatColor(b.cat);
-        const block = document.createElement('div');
-        block.className = 'week-block';
-        block.style.cssText = `top:${topPct}%;height:${heightPct}%;background:${col.bg};color:${col.text};`;
-        block.textContent = b.title;
-        cell.appendChild(block);
+        // 블록 시작이 이 시간대에 있을 때만 렌더링 (다음 시간대로 넘어가는 부분은 overflow로 처리)
+        if (bs < (h+1)*60 && bs >= h*60) {
+          const startInHour = bs - h*60;
+          const totalHeight = (be - bs) * PPM; // 전체 높이 (px)
+          const topPx = startInHour * PPM;
+          const col = getCatColor(b.cat);
+          const block = document.createElement('div');
+          block.className = 'week-block';
+          block.style.cssText = `top:${topPx}px;height:${totalHeight}px;background:${col.bg};color:${col.text};z-index:2;`;
+          block.textContent = b.title;
+          cell.appendChild(block);
+        }
       });
 
       grid.appendChild(cell);
