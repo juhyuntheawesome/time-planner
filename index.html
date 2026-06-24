@@ -111,6 +111,9 @@
   .loading-overlay.show { display: flex; }
   .loading-box { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border2); padding: 1.25rem 1.75rem; font-size: 14px; color: var(--text2); }
 
+  .nav-btn { border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; background: var(--bg); color: var(--text2); font-size: 15px; }
+  .nav-btn:hover { background: var(--bg2); }
+  .date-label { font-size: 14px; font-weight: 500; min-width: 130px; text-align: center; }
   @media (max-width: 600px) {
     .main { grid-template-columns: 1fr; }
   }
@@ -147,18 +150,12 @@
 <div id="app">
   <div class="top-bar">
     <span class="app-title">⏱️ 하루 플래너</span>
-    <input type="date" class="date-input" id="date-input">
-    <div class="tabs">
-      <button class="tab active" onclick="setTab('plan')">계획</button>
-      <button class="tab" onclick="setTab('actual')">실제</button>
-      <button class="tab" onclick="setTab('compare')">비교</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="nav-btn" onclick="changeDate(-1)">‹</button>
+      <span class="date-label" id="date-label"></span>
+      <button class="nav-btn" onclick="changeDate(1)">›</button>
     </div>
-    <button class="settings-btn" onclick="showSetup()">⚙️ 설정</button>
-  </div>
 
-  <div class="notion-bar" id="notion-bar">
-    <button class="notion-btn" onclick="loadFromNotion()">↓ 노션에서 불러오기</button>
-    <button class="notion-btn primary" onclick="saveToNotion()">↑ 노션에 저장</button>
     <span class="status-msg" id="status-msg"></span>
   </div>
 
@@ -173,7 +170,7 @@
     </div>
   </div>
 
-  <div id="compare-view" style="display:none; margin-top:0;">
+  <div id="compare-view" style="margin-top:14px;">
     <div class="compare-panel">
       <div class="compare-header"><div>시간</div><div>📋 계획</div><div>✅ 실제</div></div>
       <div id="compare-rows"></div>
@@ -253,8 +250,25 @@ document.getElementById('f-start').value = '09:00';
 document.getElementById('f-end').value = '10:00';
 
 const dateInput = document.getElementById('date-input');
-dateInput.value = new Date().toISOString().slice(0,10);
-dateInput.addEventListener('change', () => loadFromNotion());
+let currentDate = new Date().toISOString().slice(0, 10);
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = ['일','월','화','수','목','금','토'];
+  return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
+function changeDate(delta) {
+  const d = new Date(currentDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  currentDate = d.toISOString().slice(0, 10);
+  document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+  data = { plan: [], actual: [] };
+  renderTimeline('plan'); renderTimeline('actual');
+  loadFromNotion();
+}
+
+document.getElementById('date-label').textContent = formatDateLabel(currentDate);
 
 // ── init ──
 function init() {
@@ -307,13 +321,7 @@ function showLoading(msg) { document.getElementById('loading-msg').textContent =
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
 
 // ── tabs ──
-function setTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['plan','actual','compare'][i]===tab));
-  document.getElementById('timeline-view').style.display = tab==='compare'?'none':'grid';
-  document.getElementById('compare-view').style.display  = tab==='compare'?'block':'none';
-  if (tab==='compare') renderCompare();
-}
+function setTab(tab) {}
 
 // ── render timeline ──
 function renderTimeline(type) {
@@ -403,12 +411,20 @@ function saveBlock() {
   } else {
     data[currentType].push({id:uid(),title,start,end,cat,memo});
   }
-  closeModal(); renderTimeline('plan'); renderTimeline('actual');
-  if (currentTab==='compare') renderCompare();
+  closeModal(); renderTimeline('plan'); renderTimeline('actual'); renderCompare();
+  scheduleAutoSave();
 }
 function deleteBlock() {
   data[currentType] = data[currentType].filter(x=>x.id!==editingId);
-  closeModal(); renderTimeline('plan'); renderTimeline('actual');
+  closeModal(); renderTimeline('plan'); renderTimeline('actual'); renderCompare();
+  scheduleAutoSave();
+}
+
+let saveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(saveTimer);
+  setStatus('저장 대기 중...', '');
+  saveTimer = setTimeout(() => saveToNotion(), 1500);
 }
 document.getElementById('modal-bg').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
 
@@ -428,7 +444,7 @@ async function notionFetch(path, opts={}) {
 }
 
 async function saveToNotion() {
-  const date = dateInput.value;
+  const date = currentDate;
   if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
   const blocks = [
     ...data.plan.map(b=>({...b, type:'plan'})),
@@ -453,7 +469,7 @@ async function saveToNotion() {
 }
 
 async function loadFromNotion() {
-  const date = dateInput.value;
+  const date = currentDate;
   if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
   showLoading('노션에서 불러오는 중...');
   try {
@@ -467,8 +483,7 @@ async function loadFromNotion() {
     if (result.error) throw new Error(result.error);
     data.plan   = result.plan.map(b=>({...b, id:uid()}));
     data.actual = result.actual.map(b=>({...b, id:uid()}));
-    renderTimeline('plan'); renderTimeline('actual');
-    if (currentTab==='compare') renderCompare();
+    renderTimeline('plan'); renderTimeline('actual'); renderCompare();
     const total = data.plan.length + data.actual.length;
     setStatus(`${total}개 블록 불러옴`, 'ok');
   } catch(e) {
@@ -478,6 +493,7 @@ async function loadFromNotion() {
 }
 
 init();
+loadFromNotion();
 </script>
 </body>
 </html>
