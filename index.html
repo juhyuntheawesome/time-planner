@@ -209,7 +209,8 @@ const HOURS = Array.from({length: END_H - START_H}, (_, i) => START_H + i);
 let data = { plan: [], actual: [] };
 let currentType = 'plan', editingId = null;
 const _today = new Date();
-let currentDate = `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`;
+const _urlDate = new URLSearchParams(window.location.search).get('date');
+let currentDate = _urlDate || `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`;
 let saveTimer = null;
 
 // time selects
