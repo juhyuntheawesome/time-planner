@@ -129,7 +129,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="planner-grid" id="planner-grid"></div>
 <div id="week-view" style="display:none;">
-  <div id="week-grid" style="display:grid;grid-template-columns:44px repeat(7,1fr);"></div>
+  <div id="week-grid"></div>
 </div>
 
 <!-- 카테고리 관리 모달 -->
@@ -298,65 +298,69 @@ function renderWeekGrid() {
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   })();
-  const PPM = 1.2;
-  const grid = document.getElementById('week-grid');
-  grid.innerHTML = '';
-  grid.style.display = 'grid';
-  grid.style.gridTemplateColumns = `44px repeat(7, 1fr)`;
+  const PPM = 1.4;
+  const TOTAL_H = (END_H - START_H) * 60 * PPM;
+  const COL = 40;
 
-  // 헤더 행
-  const emptyHeader = document.createElement('div');
-  emptyHeader.className = 'week-hour-label';
-  emptyHeader.style.cssText = 'border-bottom:0.5px solid var(--border2);background:var(--bg2);border-right:0.5px solid var(--border2);';
-  grid.appendChild(emptyHeader);
-
+  // 헤더 HTML
+  let headerHtml = `<div style="display:grid;grid-template-columns:${COL}px repeat(7,1fr);background:var(--bg2);border-bottom:0.5px solid var(--border2);">`;
+  headerHtml += `<div style="border-right:0.5px solid var(--border2);"></div>`;
   dates.forEach((date, i) => {
     const d = new Date(date + 'T00:00:00');
-    const el = document.createElement('div');
-    el.className = 'week-col-header' + (date === todayStr ? ' today' : '');
-    el.innerHTML = `<div>${days[i]}</div><div style="font-size:13px;font-weight:600;">${d.getDate()}</div>`;
-    el.onclick = () => { currentDate = date; setView('day'); updateDateUI(); loadFromNotion(); };
-    grid.appendChild(el);
+    const isToday = date === todayStr;
+    headerHtml += `<div onclick="goToDay('${date}')" style="text-align:center;padding:6px 2px;font-size:11px;border-right:0.5px solid var(--border2);cursor:pointer;color:${isToday?'var(--text)':'var(--text2)'};font-weight:${isToday?'600':'400'};">
+      <div>${days[i]}</div><div style="font-size:13px;">${d.getDate()}</div>
+    </div>`;
   });
+  headerHtml += `</div>`;
 
-  // 시간 행
+  // 시간선 HTML (전체 폭)
+  let linesHtml = '';
   HOURS.forEach(h => {
-    const labelCell = document.createElement('div');
-    labelCell.className = 'week-hour-label';
-    labelCell.style.height = `${60 * PPM}px`;
-    labelCell.innerHTML = `<span>${String(h).padStart(2,'0')}</span>`;
-    grid.appendChild(labelCell);
-
-    dates.forEach(date => {
-      const cell = document.createElement('div');
-      cell.className = 'week-cell';
-      cell.style.height = `${60 * PPM}px`;
-      cell.style.position = 'relative';
-
-      const blocks = (weekData[date] || []).filter(b => {
-        const bs = toMin(b.start), be = toMin(b.end);
-        return bs < (h+1)*60 && be > h*60;
-      });
-
-      blocks.forEach(b => {
-        const bs = toMin(b.start), be = toMin(b.end);
-        // 블록 시작이 이 시간대에 있을 때만 렌더링 (다음 시간대로 넘어가는 부분은 overflow로 처리)
-        if (bs < (h+1)*60 && bs >= h*60) {
-          const startInHour = bs - h*60;
-          const totalHeight = (be - bs) * PPM; // 전체 높이 (px)
-          const topPx = startInHour * PPM;
-          const col = getCatColor(b.cat);
-          const block = document.createElement('div');
-          block.className = 'week-block';
-          block.style.cssText = `top:${topPx}px;height:${totalHeight}px;background:${col.bg};color:${col.text};z-index:2;`;
-          block.textContent = b.title;
-          cell.appendChild(block);
-        }
-      });
-
-      grid.appendChild(cell);
-    });
+    const y = (h - START_H) * 60 * PPM;
+    linesHtml += `<div style="position:absolute;top:${y}px;left:0;right:0;height:0.5px;background:var(--border2);pointer-events:none;"></div>`;
   });
+
+  // 시간 라벨 HTML
+  let axisHtml = `<div style="position:relative;">`;
+  HOURS.forEach(h => {
+    const y = (h - START_H) * 60 * PPM;
+    axisHtml += `<div style="position:absolute;top:${y}px;right:4px;font-size:9px;color:var(--text3);transform:translateY(-50%);">${String(h).padStart(2,'0')}</div>`;
+  });
+  axisHtml += `</div>`;
+
+  // 날짜별 열 HTML
+  let colsHtml = '';
+  dates.forEach(date => {
+    colsHtml += `<div style="position:relative;border-right:0.5px solid var(--border2);">`;
+    (weekData[date] || []).forEach(b => {
+      const bs = toMin(b.start), be = toMin(b.end);
+      const top = (bs - START_H * 60) * PPM;
+      const height = Math.max(8, (be - bs) * PPM - 1);
+      const c = getCatColor(b.cat);
+      colsHtml += `<div style="position:absolute;top:${top}px;height:${height}px;left:2px;right:2px;border-radius:3px;padding:1px 3px;overflow:hidden;font-size:9px;font-weight:500;white-space:nowrap;text-overflow:ellipsis;background:${c.bg};color:${c.text};">${b.title}</div>`;
+    });
+    colsHtml += `</div>`;
+  });
+
+  // 바디 HTML
+  const bodyHtml = `
+    <div style="position:relative;height:${TOTAL_H}px;">
+      ${linesHtml}
+      <div style="display:grid;grid-template-columns:${COL}px repeat(7,1fr);height:100%;">
+        ${axisHtml}
+        ${colsHtml}
+      </div>
+    </div>`;
+
+  document.getElementById('week-grid').innerHTML = headerHtml + bodyHtml;
+}
+
+function goToDay(date) {
+  currentDate = date;
+  setView('day');
+  updateDateUI();
+  loadFromNotion();
 }
 
 function refreshCatSelect(selectedVal) {
