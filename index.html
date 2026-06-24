@@ -90,6 +90,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <body>
 
 <div class="header">
+  <div style="position:absolute;left:16px;display:flex;gap:4px;">
+    <button class="view-btn active" id="btn-day" onclick="setView('day')">일</button>
+    <button class="view-btn" id="btn-week" onclick="setView('week')">주</button>
+  </div>
   <div class="date-nav">
     <button class="nav-btn" onclick="changeDate(-1)">‹</button>
     <div style="position:relative;">
@@ -117,13 +121,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <span class="sync-badge" id="sync-badge" style="position:absolute;right:16px;"></span>
 </div>
 
-<div class="col-headers">
+<div class="col-headers" id="col-headers">
   <div class="col-header" style="border-right:0.5px solid var(--border2)"></div>
   <div class="col-header">📋 계획 <button class="add-btn" onclick="openModal('plan')">+</button></div>
   <div class="col-header">✅ 실제 <button class="add-btn" onclick="openModal('actual')">+</button></div>
 </div>
 
 <div class="planner-grid" id="planner-grid"></div>
+<div id="week-view" style="display:none;">
+  <div class="week-grid" id="week-grid"></div>
+</div>
 
 <!-- 카테고리 관리 모달 -->
 <div class="modal-bg" id="cat-modal-bg" style="z-index:200;">
@@ -239,6 +246,114 @@ function setTimeVal(prefix, val) {
 }
 
 function uid() { return Math.random().toString(36).slice(2); }
+
+let currentView = 'day';
+let weekData = {};
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('btn-day').classList.toggle('active', view === 'day');
+  document.getElementById('btn-week').classList.toggle('active', view === 'week');
+  document.getElementById('col-headers').style.display = view === 'day' ? 'grid' : 'none';
+  document.getElementById('planner-grid').style.display = view === 'day' ? 'grid' : 'none';
+  document.getElementById('week-view').style.display = view === 'week' ? 'block' : 'none';
+  if (view === 'week') loadWeekData();
+}
+
+function getWeekDates(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const day = dt.getDay();
+  const monday = new Date(y, m-1, d - (day === 0 ? 6 : day - 1));
+  return Array.from({length: 7}, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
+  });
+}
+
+async function loadWeekData() {
+  const dates = getWeekDates(currentDate);
+  weekData = {};
+  setStatus('주간 데이터 불러오는 중...', 'syncing');
+  await Promise.all(dates.map(async date => {
+    try {
+      const res = await fetch('/api/load', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date })
+      });
+      const result = await res.json();
+      weekData[date] = result.actual || [];
+    } catch(e) { weekData[date] = []; }
+  }));
+  setStatus('동기화됨', 'ok');
+  renderWeekGrid();
+}
+
+function renderWeekGrid() {
+  const dates = getWeekDates(currentDate);
+  const days = ['월','화','수','목','금','토','일'];
+  const todayStr = (() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  })();
+  const PPM = 1.2;
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = '';
+
+  // 헤더 행
+  const emptyHeader = document.createElement('div');
+  emptyHeader.className = 'week-hour-label';
+  emptyHeader.style.cssText = 'border-bottom:0.5px solid var(--border2);background:var(--bg2);border-right:0.5px solid var(--border2);';
+  grid.appendChild(emptyHeader);
+
+  dates.forEach((date, i) => {
+    const d = new Date(date + 'T00:00:00');
+    const el = document.createElement('div');
+    el.className = 'week-col-header' + (date === todayStr ? ' today' : '');
+    el.innerHTML = `<div>${days[i]}</div><div style="font-size:13px;font-weight:600;">${d.getDate()}</div>`;
+    el.onclick = () => { currentDate = date; setView('day'); updateDateUI(); loadFromNotion(); };
+    grid.appendChild(el);
+  });
+
+  // 시간 행
+  HOURS.forEach(h => {
+    const labelCell = document.createElement('div');
+    labelCell.className = 'week-hour-label';
+    labelCell.style.height = `${60 * PPM}px`;
+    labelCell.innerHTML = `<span>${String(h).padStart(2,'0')}</span>`;
+    grid.appendChild(labelCell);
+
+    dates.forEach(date => {
+      const cell = document.createElement('div');
+      cell.className = 'week-cell';
+      cell.style.height = `${60 * PPM}px`;
+      cell.style.position = 'relative';
+
+      const blocks = (weekData[date] || []).filter(b => {
+        const bs = toMin(b.start), be = toMin(b.end);
+        return bs < (h+1)*60 && be > h*60;
+      });
+
+      blocks.forEach(b => {
+        const bs = toMin(b.start), be = toMin(b.end);
+        const startInHour = Math.max(bs, h*60) - h*60;
+        const endInHour   = Math.min(be, (h+1)*60) - h*60;
+        const topPct  = (startInHour / 60) * 100;
+        const heightPct = ((endInHour - startInHour) / 60) * 100;
+        const col = getCatColor(b.cat);
+        const block = document.createElement('div');
+        block.className = 'week-block';
+        block.style.cssText = `top:${topPct}%;height:${heightPct}%;background:${col.bg};color:${col.text};`;
+        block.textContent = b.title;
+        cell.appendChild(block);
+      });
+
+      grid.appendChild(cell);
+    });
+  });
+}
 
 function refreshCatSelect(selectedVal) {
   const sel = document.getElementById('f-cat');
