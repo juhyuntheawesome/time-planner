@@ -259,7 +259,7 @@ dateInput.value = new Date().toISOString().slice(0,10);
 function init() {
   notionToken = localStorage.getItem('planner_token') || '';
   notionDbId  = localStorage.getItem('planner_dbid')  || '';
-  if (notionToken && notionDbId) {
+  if (false) {
     document.getElementById('inp-token').value = notionToken;
     document.getElementById('inp-dbid').value  = notionDbId;
     launchApp();
@@ -413,7 +413,7 @@ document.getElementById('modal-bg').addEventListener('click', e=>{ if(e.target==
 
 // ── notion API ──
 async function notionFetch(path, opts={}) {
-  const res = await fetch('https://api.notion.com/v1' + path, {
+  const res = await fetch('http://localhost:8765/notion' + path, {
     ...opts,
     headers: {
       'Authorization': 'Bearer ' + notionToken,
@@ -434,22 +434,22 @@ async function saveToNotion() {
 
   showLoading(`노션에 저장 중... (0/${all.length})`);
   let saved = 0;
+  const WEBHOOK = 'https://hook.us2.make.com/h9d3rp6wpj62bv4wk8ox3jyq5asth6a3';
   try {
     for (const b of all) {
-      const body = {
-        parent: { database_id: notionDbId },
-        properties: {
-          '제목':    { title: [{ text: { content: `[${date}] ${b.title}` } }] },
-          '날짜':    { date: { start: date } },
-          '시작 시간': { select: { name: b.start } },
-          '종료 시간': { select: { name: b.end } },
-          '카테고리': { select: { name: CAT_TO_NOTION[b.cat]||b.cat } },
-          '유형':    { select: { name: b.type==='plan'?'계획':'실제' } },
-          '완료':    { checkbox: false },
-          ...(b.memo ? { '메모': { rich_text: [{ text: { content: b.memo } }] } } : {})
-        }
-      };
-      await notionFetch('/pages', { method: 'POST', body: JSON.stringify(body) });
+      await fetch(WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `[${date}] ${b.title}`,
+          date:  date,
+          start: b.start,
+          end:   b.end,
+          cat:   CAT_TO_NOTION[b.cat] || b.cat,
+          type:  b.type === 'plan' ? '계획' : '실제',
+          memo:  b.memo || ''
+        })
+      });
       saved++;
       document.getElementById('loading-msg').textContent = `노션에 저장 중... (${saved}/${all.length})`;
     }
@@ -461,37 +461,7 @@ async function saveToNotion() {
 }
 
 async function loadFromNotion() {
-  const date = dateInput.value;
-  if (!date) { setStatus('날짜를 선택해주세요','err'); return; }
-  showLoading('노션에서 불러오는 중...');
-  try {
-    const res = await notionFetch(`/databases/${notionDbId}/query`, {
-      method: 'POST',
-      body: JSON.stringify({
-        filter: { property: '날짜', date: { equals: date } },
-        sorts: [{ property: '시작 시간', direction: 'ascending' }]
-      })
-    });
-    data = { plan: [], actual: [] };
-    for (const page of res.results) {
-      const p = page.properties;
-      const type   = p['유형']?.select?.name === '계획' ? 'plan' : 'actual';
-      const titleRaw = p['제목']?.title?.[0]?.text?.content || '';
-      const title  = titleRaw.replace(/^\[\d{4}-\d{2}-\d{2}\] /, '');
-      const start  = p['시작 시간']?.select?.name || '';
-      const end    = p['종료 시간']?.select?.name  || '';
-      const catRaw = p['카테고리']?.select?.name   || '';
-      const cat    = CAT_FROM_NOTION[catRaw] || '기타';
-      const memo   = p['메모']?.rich_text?.[0]?.text?.content || '';
-      if (title && start && end) data[type].push({ id:uid(), title, start, end, cat, memo });
-    }
-    renderTimeline('plan'); renderTimeline('actual');
-    if (currentTab==='compare') renderCompare();
-    setStatus(`${res.results.length}개 블록 불러옴`, 'ok');
-  } catch(e) {
-    setStatus('불러오기 실패: ' + e.message, 'err');
-  }
-  hideLoading();
+  setStatus('불러오기는 현재 지원하지 않아요 (저장만 가능)', 'err');
 }
 
 init();
