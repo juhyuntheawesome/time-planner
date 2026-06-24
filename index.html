@@ -19,7 +19,9 @@
     --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
   }
 }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  #week-view { flex: 1; overflow-y: auto; }
+  #planner-grid { flex: 1; overflow-y: auto; }
 
 /* header */
 .header { display: flex; align-items: center; justify-content: center; padding: 10px 16px; border-bottom: 0.5px solid var(--border2); background: var(--bg); position: relative; }
@@ -121,7 +123,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <span class="sync-badge" id="sync-badge" style="position:absolute;right:16px;"></span>
 </div>
 
-<div class="col-headers" id="col-headers">
+<div class="col-headers" id="col-headers" style="flex-shrink:0;">
   <div class="col-header" style="border-right:0.5px solid var(--border2)"></div>
   <div class="col-header">📋 계획 <button class="add-btn" onclick="openModal('plan')">+</button></div>
   <div class="col-header">✅ 실제 <button class="add-btn" onclick="openModal('actual')">+</button></div>
@@ -298,8 +300,9 @@ function renderWeekGrid() {
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   })();
-  const PPM = 1.4;
-  const TOTAL_H = (END_H - START_H) * 60 * PPM;
+  const availH = window.innerHeight - 120; // 헤더 등 제외
+  const PPM_AUTO = Math.max(1.0, availH / ((END_H - START_H) * 60));
+  const TOTAL_H = (END_H - START_H) * 60 * PPM_AUTO;
   const COL = 40;
 
   // 헤더 HTML
@@ -317,14 +320,14 @@ function renderWeekGrid() {
   // 시간선 HTML (전체 폭)
   let linesHtml = '';
   HOURS.forEach(h => {
-    const y = (h - START_H) * 60 * PPM;
+    const y = (h - START_H) * 60 * PPM_AUTO;
     linesHtml += `<div style="position:absolute;top:${y}px;left:0;right:0;height:0.5px;background:var(--border2);pointer-events:none;"></div>`;
   });
 
   // 시간 라벨 HTML
   let axisHtml = `<div style="position:relative;">`;
   HOURS.forEach(h => {
-    const y = (h - START_H) * 60 * PPM;
+    const y = (h - START_H) * 60 * PPM_AUTO;
     axisHtml += `<div style="position:absolute;top:${y}px;right:4px;font-size:9px;color:var(--text3);transform:translateY(-50%);">${String(h).padStart(2,'0')}</div>`;
   });
   axisHtml += `</div>`;
@@ -335,8 +338,8 @@ function renderWeekGrid() {
     colsHtml += `<div style="position:relative;border-right:0.5px solid var(--border2);">`;
     (weekData[date] || []).forEach(b => {
       const bs = toMin(b.start), be = toMin(b.end);
-      const top = (bs - START_H * 60) * PPM;
-      const height = Math.max(8, (be - bs) * PPM - 1);
+      const top = (bs - START_H * 60) * PPM_AUTO;
+      const height = Math.max(8, (be - bs) * PPM_AUTO - 1);
       const c = getCatColor(b.cat);
       colsHtml += `<div style="position:absolute;top:${top}px;height:${height}px;left:2px;right:2px;border-radius:3px;padding:1px 3px;overflow:hidden;font-size:9px;font-weight:500;white-space:nowrap;text-overflow:ellipsis;background:${c.bg};color:${c.text};">${b.title}</div>`;
     });
@@ -733,6 +736,10 @@ updateDateUI();
   await loadCats();
   renderGrid();
   loadFromNotion();
+window.addEventListener('resize', () => {
+  if (currentView === 'week') renderWeekGrid();
+  else renderGrid();
+});
 })();
 </script>
 </body>
